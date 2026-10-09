@@ -1,0 +1,1640 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="AutoDash" />
+  <meta name="theme-color" content="#1C1C1E" />
+  <link rel="manifest" href="manifest.json" />
+  <title>AutoDash</title>
+
+  <link  rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+<style>
+/* ════════════════════════════════════════════════════════════════
+   DESIGN TOKENS v3.0 — CarPlay-Dark + Glassmorphism
+════════════════════════════════════════════════════════════════ */
+:root {
+  --bg:          #1C1C1E;
+  --tile:        rgba(44,44,46,0.82);
+  --tile-act:    rgba(58,58,60,0.90);
+  --border:      rgba(255,255,255,0.10);
+  --border-act:  rgba(255,255,255,0.22);
+  --accent:      #007AFF;
+  --green:       #30D158;
+  --red:         #FF3B30;
+  --orange:      #FF9F0A;
+  --t1:          #FFFFFF;
+  --t2:          #8E8E93;
+  --t3:          #48484A;
+  --r:           16px;
+  --gap:         9px;
+  --pad:         11px;
+  --sb-h:        34px;
+  --font:        -apple-system, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+
+  /* Gauge constants (r=50, 270° arc, circumference=314.16) */
+  --gauge-arc:   235.62;
+  --gauge-circ:  314.16;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   RESET & ROOT
+════════════════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+button { font-family: var(--font); cursor: pointer; border: none; }
+
+html, body {
+  width: 100%; height: 100%;
+  background: var(--bg);
+  color: var(--t1);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  touch-action: manipulation;
+  overscroll-behavior: none;
+}
+
+/* Deep background gradient — gives glassmorphism tiles something to blur */
+body {
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse at 25% 25%, rgba(0,122,255,0.18) 0%, transparent 55%),
+    radial-gradient(ellipse at 75% 70%, rgba(52,199,89,0.10) 0%, transparent 55%),
+    var(--bg);
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding-top:    env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left:   env(safe-area-inset-left);
+  padding-right:  env(safe-area-inset-right);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   STATUS BAR
+════════════════════════════════════════════════════════════════ */
+#status-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 var(--pad);
+  height: var(--sb-h);
+  flex-shrink: 0;
+  background: rgba(28,28,30,0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+
+.sb-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+#sb-time {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--t2);
+}
+
+@keyframes blink { 50% { opacity: 0.4; } }
+.pulse { animation: blink 1.4s ease-in-out infinite; }
+
+/* ════════════════════════════════════════════════════════════════
+   MAIN + GRID
+════════════════════════════════════════════════════════════════ */
+#main {
+  flex: 1;
+  padding: var(--pad);
+  overflow: hidden;
+  min-height: 0;
+}
+
+#grid {
+  display: grid;
+  gap: var(--gap);
+  height: 100%;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto 2.4fr 1.8fr 1fr;
+}
+
+/* Portrait placement */
+.cw-row     { grid-column: 1/3; grid-row: 1;
+              display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap); }
+#tile-map   { grid-column: 1/3; grid-row: 2; }
+#tile-music { grid-column: 1;   grid-row: 3; }
+#tile-phone { grid-column: 2;   grid-row: 3; }
+#tile-speed { grid-column: 1/3; grid-row: 4; }
+
+/* Landscape */
+@media (orientation: landscape) {
+  #grid {
+    grid-template-columns: 1fr 260px;
+    grid-template-rows: auto 1fr auto auto;
+  }
+  .cw-row     { grid-column: 2; grid-row: 1; }
+  #tile-map   { grid-column: 1; grid-row: 1/5; }
+  #tile-music { grid-column: 2; grid-row: 2; }
+  #tile-phone { grid-column: 2; grid-row: 3; }
+  #tile-speed { grid-column: 2; grid-row: 4; }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   TILE BASE — Glassmorphism
+════════════════════════════════════════════════════════════════ */
+.tile {
+  background: var(--tile);
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+  position: relative;
+  min-height: 0;
+}
+
+.tile-inner {
+  padding: 11px 13px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 1;
+}
+
+.tile-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--t3);
+  margin-bottom: 5px;
+  flex-shrink: 0;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   CLOCK TILE
+════════════════════════════════════════════════════════════════ */
+#tile-clock .tile-inner { justify-content: center; align-items: flex-start; }
+
+#clk-wrap { display: flex; align-items: baseline; gap: 2px; }
+
+#clk-hhmm {
+  font-size: clamp(28px, 5vw, 40px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+#clk-ss {
+  font-size: clamp(18px, 3vw, 24px);
+  font-weight: 400;
+  color: var(--t2);
+  font-variant-numeric: tabular-nums;
+}
+
+#clk-date {
+  font-size: 11px;
+  color: var(--t2);
+  margin-top: 2px;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   WEATHER TILE — Animierte Icons
+════════════════════════════════════════════════════════════════ */
+#tile-weather .tile-inner { justify-content: center; }
+
+#wx-row { display: flex; align-items: center; gap: 7px; }
+
+#wx-icon {
+  font-size: clamp(24px, 4vw, 32px);
+  line-height: 1;
+  display: inline-block;
+  /* animations applied via JS-added class */
+}
+
+#wx-temp {
+  font-size: clamp(24px, 4vw, 32px);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+#wx-desc  { font-size: 11px; color: var(--t2); margin-top: 3px; }
+#wx-extra { font-size: 10px; color: var(--t3); margin-top: 1px; }
+
+.demo-badge {
+  display: inline-block;
+  font-size: 9px; font-weight: 800; letter-spacing: 0.07em;
+  background: var(--orange); color: #000;
+  border-radius: 4px; padding: 1px 5px;
+  margin-top: 4px;
+}
+
+/* ── Weather icon animations ── */
+@keyframes wxSunPulse {
+  0%,100% { filter: drop-shadow(0 0 4px rgba(255,214,10,0.6)); transform: scale(1); }
+  50%      { filter: drop-shadow(0 0 10px rgba(255,214,10,0.9)); transform: scale(1.08); }
+}
+@keyframes wxRainBounce {
+  0%,100% { transform: translateY(0); }
+  40%     { transform: translateY(3px); }
+}
+@keyframes wxSnowSpin {
+  0%   { transform: rotate(0deg) scale(1); }
+  50%  { transform: rotate(180deg) scale(1.05); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+@keyframes wxThunderFlash {
+  0%,100%,25%     { opacity: 1; }
+  12%,18%,37%,43% { opacity: 0.3; }
+}
+@keyframes wxCloudDrift {
+  0%,100% { transform: translateX(0); }
+  50%     { transform: translateX(4px); }
+}
+@keyframes wxFogFade {
+  0%,100% { opacity: 1; }
+  50%     { opacity: 0.5; }
+}
+
+.wx-sunny   { animation: wxSunPulse    3.5s ease-in-out infinite; }
+.wx-rainy   { animation: wxRainBounce  1.2s ease-in-out infinite; }
+.wx-snowy   { animation: wxSnowSpin    4s   linear      infinite; }
+.wx-thunder { animation: wxThunderFlash 2s  ease-in-out infinite; }
+.wx-cloudy  { animation: wxCloudDrift   3s  ease-in-out infinite; }
+.wx-foggy   { animation: wxFogFade      2s  ease-in-out infinite; }
+
+/* Spinner */
+.spin {
+  width: 18px; height: 18px;
+  border: 2px solid var(--border-act);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: rotate 0.7s linear infinite;
+}
+@keyframes rotate { to { transform: rotate(360deg); } }
+
+/* ════════════════════════════════════════════════════════════════
+   MAP TILE
+════════════════════════════════════════════════════════════════ */
+#tile-map { padding: 0; }
+
+#map-wrap { position: relative; width: 100%; height: 100%; }
+#map { width: 100%; height: 100%; }
+
+/* ETA-Badge auf der Kompakt-Karte */
+#map-eta-badge {
+  position: absolute;
+  bottom: 8px; left: 8px;
+  z-index: 1000;
+  background: rgba(28,28,30,0.90);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 10px;
+  padding: 5px 10px;
+  font-size: 11px; font-weight: 700;
+  color: white;
+  pointer-events: none;
+  display: none;
+}
+#map-eta-badge.show { display: block; }
+
+#map-expand {
+  position: absolute; top: 8px; right: 8px; z-index: 1000;
+  background: rgba(44,44,46,0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border-act);
+  border-radius: 10px;
+  color: var(--t1);
+  font-size: 16px;
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   MAP FULLSCREEN
+════════════════════════════════════════════════════════════════ */
+#map-fs {
+  position: fixed; inset: 0; z-index: 9000;
+  background: var(--bg);
+  display: none;
+  flex-direction: column;
+  padding-top:    env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+#map-fs.open { display: flex; }
+
+#map-fs-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--tile);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  z-index: 2;
+}
+
+#map-fs-input {
+  flex: 1;
+  background: rgba(255,255,255,0.09);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--t1);
+  font-size: 15px;
+  font-family: var(--font);
+  padding: 8px 12px;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+#map-fs-input::placeholder { color: var(--t3); }
+#map-fs-input:focus { border-color: var(--accent); }
+
+.fs-btn {
+  border-radius: 10px;
+  font-size: 13px; font-weight: 600;
+  padding: 8px 14px;
+  min-height: 36px;
+  white-space: nowrap;
+}
+
+#map-fs-search-btn { background: var(--accent); color: #fff; }
+#map-fs-close-btn  { background: rgba(255,255,255,0.12); color: var(--t1); }
+
+/* Suggestions */
+#map-fs-suggestions {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 10px; right: 10px;
+  background: var(--tile-act);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-act);
+  border-radius: 12px;
+  z-index: 9500;
+  overflow: hidden;
+  display: none;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+}
+
+#map-fs-suggestions.show { display: block; }
+
+.sug-item {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.sug-item:last-child { border-bottom: none; }
+.sug-item:active { background: rgba(255,255,255,0.08); }
+.sug-name { font-size: 13px; font-weight: 500; }
+.sug-sub  { font-size: 11px; color: var(--t3); margin-top: 2px; }
+
+/* Turn-by-Turn Navigations-Banner */
+#nav-banner {
+  position: absolute;
+  top: 66px; left: 12px; right: 12px;
+  z-index: 9100;
+  display: none;
+  align-items: center;
+  gap: 14px;
+  background: rgba(28,28,30,0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 16px;
+  padding: 12px 18px;
+  box-shadow: 0 6px 28px rgba(0,0,0,0.65);
+  pointer-events: none;
+}
+#nav-banner.show { display: flex; }
+
+#nav-icon {
+  font-size: 30px;
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,122,255,0.18);
+  border-radius: 12px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+#nav-text { flex: 1; min-width: 0; }
+#nav-street {
+  font-size: 14px; font-weight: 700;
+  color: white;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#nav-dist { font-size: 12px; color: var(--t2); margin-top: 2px; }
+
+/* Neuberechnung-Hinweis */
+#nav-reroute {
+  position: absolute;
+  top: 148px; left: 50%; transform: translateX(-50%);
+  background: rgba(255,159,10,0.92);
+  border-radius: 20px;
+  padding: 6px 18px;
+  font-size: 12px; font-weight: 700;
+  color: #000;
+  z-index: 9200;
+  display: none;
+  white-space: nowrap;
+}
+#nav-reroute.show { display: block; }
+
+#map-fs-map { flex: 1; min-height: 0; position: relative; }
+
+#map-fs-route {
+  background: var(--tile);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border);
+  padding: 10px 14px;
+  display: none;
+  gap: 3px;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+#map-fs-route.show { display: flex; }
+#route-main { font-size: 14px; font-weight: 600; }
+#route-sub  { font-size: 12px; color: var(--t2); }
+
+#map-fs-loading {
+  padding: 8px 14px;
+  font-size: 12px; color: var(--t2);
+  display: none;
+  align-items: center; gap: 8px;
+  background: var(--tile);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+#map-fs-loading.show { display: flex; }
+
+/* ════════════════════════════════════════════════════════════════
+   MUSIC TILE — Album-Art-Blur-Hintergrund
+════════════════════════════════════════════════════════════════ */
+#tile-music .tile-inner { gap: 6px; justify-content: space-between; }
+
+/* Blur-Background — hinter dem eigentlichen Tile-Inhalt */
+#mu-art-bg {
+  position: absolute;
+  inset: -10px;
+  background-size: cover;
+  background-position: center;
+  filter: blur(22px) brightness(0.28) saturate(1.8);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  z-index: 0;
+}
+#mu-art-bg.active { opacity: 1; }
+
+/* Pulsierender Farbverlauf wenn Musik läuft ohne Artwork */
+@keyframes musicGlow {
+  0%,100% { opacity: 0.3; }
+  50%     { opacity: 0.7; }
+}
+#tile-music.playing-nogfx::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(0,122,255,0.25) 0%, rgba(88,86,214,0.20) 100%);
+  animation: musicGlow 3.5s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+#mu-info { display: flex; gap: 10px; align-items: center; min-height: 0; flex-shrink: 0; }
+
+#mu-art {
+  width: 52px; height: 52px;
+  border-radius: 8px;
+  background: var(--tile-act);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  overflow: hidden;
+}
+
+#mu-art img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
+
+#mu-meta { flex: 1; min-width: 0; }
+#mu-title  { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#mu-artist { font-size: 11px; color: var(--t2); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+#mu-prog-wrap { height: 3px; background: rgba(255,255,255,0.10); border-radius: 2px; overflow: hidden; flex-shrink: 0; }
+#mu-prog { height: 100%; background: var(--accent); width: 0%; transition: width 0.5s linear; }
+
+#mu-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  flex-shrink: 0;
+}
+
+.mu-btn {
+  background: none;
+  color: var(--t1);
+  font-size: 20px;
+  min-width: 44px; min-height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px;
+  transition: background 0.12s;
+}
+.mu-btn:active { background: rgba(255,255,255,0.10); }
+#mu-play { font-size: 26px; }
+
+#mu-load-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+#mu-file { display: none; }
+
+#mu-load-lbl {
+  font-size: 10px; color: var(--t3);
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+#mu-load-lbl:hover, #mu-load-lbl:active { color: var(--accent); border-color: var(--accent); }
+
+/* ════════════════════════════════════════════════════════════════
+   PHONE TILE
+════════════════════════════════════════════════════════════════ */
+#tile-phone .tile-inner { justify-content: space-between; }
+
+#ph-idle { display: flex; flex-direction: column; gap: 7px; flex: 1; justify-content: center; }
+#ph-icon { font-size: 24px; color: var(--t3); text-align: center; }
+#ph-hint { font-size: 10px; color: var(--t3); text-align: center; }
+
+.emrg-row { display: flex; gap: 6px; }
+
+.emrg-btn {
+  flex: 1;
+  border-radius: 10px;
+  font-size: 12px; font-weight: 700;
+  padding: 9px 4px;
+  min-height: 40px;
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+}
+#ph-112 { background: var(--red);    color: #fff; }
+#ph-110 { background: #0077CC;      color: #fff; }
+#ph-app { background: var(--tile-act); color: var(--t1); flex: 1; }
+
+#ph-active { display: none; flex-direction: column; align-items: center; gap: 6px; flex: 1; justify-content: center; }
+#ph-active.show { display: flex; }
+#ph-caller { font-size: 15px; font-weight: 700; color: var(--green); }
+#ph-dur    { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* ════════════════════════════════════════════════════════════════
+   SPEED TILE — Analoger SVG-Tachometer
+════════════════════════════════════════════════════════════════ */
+#tile-speed .tile-inner {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 16px;
+}
+
+/* Gauge-Wrapper */
+#spd-gauge-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+#spd-gauge { display: block; overflow: visible; }
+
+/* Animate gauge arc on value change */
+.gauge-arc {
+  transition: stroke-dasharray 0.3s ease-out, stroke 0.3s ease;
+}
+
+#compass {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 2px;
+}
+
+#cmp-arrow { font-size: 26px; display: block; transition: transform 0.5s ease; }
+#cmp-dir   { font-size: 11px; font-weight: 700; color: var(--t2); width: 26px; text-align: center; }
+
+/* ════════════════════════════════════════════════════════════════
+   LEAFLET OVERRIDES
+════════════════════════════════════════════════════════════════ */
+.leaflet-control-attribution {
+  background: rgba(28,28,30,0.55) !important;
+  color: rgba(255,255,255,0.35) !important;
+  font-size: 8px !important;
+  padding: 1px 4px !important;
+}
+.leaflet-control-attribution a { color: rgba(255,255,255,0.35) !important; }
+.leaflet-control-zoom { display: none; }
+
+/* ════════════════════════════════════════════════════════════════
+   UTILITY
+════════════════════════════════════════════════════════════════ */
+.hidden { display: none !important; }
+</style>
+</head>
+
+<body>
+<div id="app">
+
+  <!-- STATUS BAR -->
+  <div id="status-bar">
+    <div class="sb-item" id="sb-gps">
+      <span id="sb-gps-dot">📍</span>
+      <span id="sb-gps-lbl" style="color:var(--t3)">GPS –</span>
+    </div>
+    <div class="sb-item hidden" id="sb-music">
+      <span>♪</span>
+      <span id="sb-music-title" style="color:var(--t2)"></span>
+    </div>
+    <div class="sb-item hidden" id="sb-call">
+      <span style="color:var(--green)" class="pulse">● Anruf aktiv</span>
+    </div>
+    <span id="sb-time"></span>
+  </div>
+
+  <!-- DASHBOARD GRID -->
+  <div id="main">
+    <div id="grid">
+
+      <!-- Clock + Weather -->
+      <div class="cw-row">
+        <div class="tile" id="tile-clock">
+          <div class="tile-inner">
+            <div class="tile-lbl">Uhrzeit</div>
+            <div id="clk-wrap">
+              <span id="clk-hhmm">--:--</span><span id="clk-ss">:--</span>
+            </div>
+            <div id="clk-date"></div>
+          </div>
+        </div>
+
+        <div class="tile" id="tile-weather">
+          <div class="tile-inner">
+            <div class="tile-lbl">Wetter</div>
+            <div id="wx-loading"><div class="spin"></div></div>
+            <div id="wx-content" class="hidden">
+              <div id="wx-row">
+                <!-- wx-icon bekommt per JS eine Animations-Klasse -->
+                <span id="wx-icon">☀️</span>
+                <span id="wx-temp">--°</span>
+              </div>
+              <div id="wx-desc"></div>
+              <div id="wx-extra"></div>
+              <div id="wx-demo" class="demo-badge hidden">DEMO</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Map -->
+      <div class="tile" id="tile-map">
+        <div id="map-wrap">
+          <div id="map"></div>
+          <button id="map-expand" title="Vollbild Navigation">⤢</button>
+          <!-- ETA-Badge — zeigt Strecke + Ankunftszeit wenn Route aktiv -->
+          <div id="map-eta-badge"></div>
+        </div>
+      </div>
+
+      <!-- Music -->
+      <div class="tile" id="tile-music">
+        <!-- Blur-Hintergrund (Album-Art) -->
+        <div id="mu-art-bg"></div>
+        <div class="tile-inner">
+          <div class="tile-lbl">Musik</div>
+          <div id="mu-info">
+            <div id="mu-art">🎵</div>
+            <div id="mu-meta">
+              <div id="mu-title">Kein Titel</div>
+              <div id="mu-artist">–</div>
+            </div>
+          </div>
+          <div id="mu-prog-wrap"><div id="mu-prog"></div></div>
+          <div id="mu-controls">
+            <button class="mu-btn" id="mu-prev" title="Zurück">⏮</button>
+            <button class="mu-btn" id="mu-play" title="Play/Pause">▶</button>
+            <button class="mu-btn" id="mu-next" title="Weiter">⏭</button>
+          </div>
+          <div id="mu-load-row">
+            <label id="mu-load-lbl" for="mu-file">📁 Audiodatei laden</label>
+            <input type="file" id="mu-file" accept="audio/*" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Phone -->
+      <div class="tile" id="tile-phone">
+        <div class="tile-inner">
+          <div class="tile-lbl">Telefon</div>
+          <div id="ph-idle">
+            <div id="ph-icon">📞</div>
+            <div id="ph-hint">Notruf</div>
+            <div class="emrg-row">
+              <button class="emrg-btn" id="ph-112">🚨 112</button>
+              <button class="emrg-btn" id="ph-110">🚓 110</button>
+            </div>
+            <button class="emrg-btn" id="ph-app" style="display:none">📱 Telefon öffnen</button>
+          </div>
+          <div id="ph-active">
+            <div id="ph-caller">Anruf</div>
+            <div id="ph-dur">00:00</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Speed — Analoger SVG-Tachometer -->
+      <div class="tile" id="tile-speed">
+        <div class="tile-inner">
+          <div id="spd-gauge-wrap">
+            <!--
+              SVG-Gauge:
+              r=50, cx=cy=60 → Umfang = 2π·50 ≈ 314.16
+              270°-Bogen = 0.75 × 314.16 = 235.62  |  Lücke = 78.54
+              rotate(135) → Bogen startet ca. 7-Uhr-Position (unten-links)
+            -->
+            <svg id="spd-gauge" viewBox="0 0 120 120" width="88" height="88">
+              <!-- Hintergrund-Bogen (grau) -->
+              <circle cx="60" cy="60" r="50" fill="none"
+                stroke="rgba(255,255,255,0.10)" stroke-width="11"
+                stroke-dasharray="235.62 78.54"
+                transform="rotate(135 60 60)"
+                stroke-linecap="round"/>
+              <!-- Wert-Bogen (farbig) -->
+              <circle id="spd-arc" class="gauge-arc" cx="60" cy="60" r="50" fill="none"
+                stroke="#007AFF" stroke-width="11"
+                stroke-dasharray="0 314.16"
+                transform="rotate(135 60 60)"
+                stroke-linecap="round"/>
+              <!-- Geschwindigkeit-Zahl -->
+              <text id="spd-gauge-val" x="60" y="55"
+                text-anchor="middle" dominant-baseline="middle"
+                fill="white" font-size="21" font-weight="800"
+                font-family="-apple-system,Helvetica,Arial,sans-serif"
+                font-variant-numeric="tabular-nums">0</text>
+              <!-- Einheit km/h -->
+              <text x="60" y="72"
+                text-anchor="middle" dominant-baseline="middle"
+                fill="#8E8E93" font-size="10" font-weight="600"
+                font-family="-apple-system,Helvetica,Arial,sans-serif">km/h</text>
+            </svg>
+          </div>
+          <div id="compass">
+            <span id="cmp-arrow">↑</span>
+            <span id="cmp-dir">–</span>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /#grid -->
+  </div><!-- /#main -->
+
+</div><!-- /#app -->
+
+<!-- MAP FULLSCREEN MODAL -->
+<div id="map-fs">
+  <div id="map-fs-header">
+    <input type="text" id="map-fs-input" placeholder="Adresse / Ziel eingeben…" autocomplete="off" autocorrect="off" />
+    <button class="fs-btn" id="map-fs-search-btn">🔍 Suchen</button>
+    <button class="fs-btn" id="map-fs-close-btn">✕</button>
+    <div id="map-fs-suggestions"></div>
+  </div>
+  <!-- Karte -->
+  <div id="map-fs-map">
+    <!-- Turn-by-Turn Navigations-Banner — über der Karte -->
+    <div id="nav-banner">
+      <div id="nav-icon">⬆</div>
+      <div id="nav-text">
+        <div id="nav-street">Fahren Sie geradeaus</div>
+        <div id="nav-dist"></div>
+      </div>
+    </div>
+    <!-- Neuberechnung-Hinweis -->
+    <div id="nav-reroute">↻ Neuberechnung…</div>
+  </div>
+  <div id="map-fs-loading"><div class="spin"></div><span>Route wird berechnet…</span></div>
+  <div id="map-fs-route">
+    <div id="route-main"></div>
+    <div id="route-sub"></div>
+  </div>
+</div>
+
+<audio id="audio" preload="metadata"></audio>
+
+<!-- ════════════════════════════════════════════════════════════
+     JAVASCRIPT — v3.0
+════════════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+const G   = id => document.getElementById(id);
+const pad2 = n => String(Math.floor(n)).padStart(2, '0');
+
+/* ═══════════════════════════════════════════════════════════════
+   CLOCK SERVICE
+═══════════════════════════════════════════════════════════════ */
+(function ClockService() {
+  const hhmm = G('clk-hhmm'), ss = G('clk-ss'),
+        date = G('clk-date'), sbTime = G('sb-time');
+
+  const dateFmt = new Intl.DateTimeFormat('de-DE', {
+    weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric'
+  });
+
+  function tick() {
+    const n = new Date();
+    const h = pad2(n.getHours()), m = pad2(n.getMinutes()), s = pad2(n.getSeconds());
+    hhmm.textContent   = `${h}:${m}`;
+    ss.textContent     = `:${s}`;
+    date.textContent   = dateFmt.format(n);
+    sbTime.textContent = `${h}:${m}`;
+  }
+
+  tick();
+  setInterval(tick, 1000);
+})();
+
+
+/* ═══════════════════════════════════════════════════════════════
+   WEATHER SERVICE — Open-Meteo + animierte Icons
+═══════════════════════════════════════════════════════════════ */
+const WeatherSvc = (function() {
+  const THROTTLE = 10 * 60 * 1000;
+  const MIN_DIST = 2000;
+
+  let lastT = 0, lastLat = null, lastLon = null;
+
+  // WMO 4677 → [emoji, Beschreibung, CSS-Animations-Klasse]
+  const WMO = {
+    0:  ['☀️','Klarer Himmel',        'wx-sunny'],
+    1:  ['🌤️','Überwiegend klar',     'wx-sunny'],
+    2:  ['⛅','Teilweise bewölkt',    'wx-cloudy'],
+    3:  ['☁️','Bedeckt',              'wx-cloudy'],
+    45: ['🌫️','Nebel',               'wx-foggy'],
+    48: ['🌫️','Gefrierender Nebel',  'wx-foggy'],
+    51: ['🌦️','Leichter Nieselregen','wx-rainy'],
+    53: ['🌦️','Nieselregen',         'wx-rainy'],
+    55: ['🌧️','Starker Nieselregen', 'wx-rainy'],
+    61: ['🌧️','Leichter Regen',      'wx-rainy'],
+    63: ['🌧️','Regen',               'wx-rainy'],
+    65: ['🌧️','Starker Regen',       'wx-rainy'],
+    71: ['❄️','Leichter Schnee',      'wx-snowy'],
+    73: ['❄️','Schneefall',           'wx-snowy'],
+    75: ['❄️','Starker Schnee',       'wx-snowy'],
+    80: ['🌦️','Leichte Schauer',     'wx-rainy'],
+    81: ['🌧️','Schauer',             'wx-rainy'],
+    82: ['🌧️','Starke Schauer',      'wx-rainy'],
+    85: ['🌨️','Schneeschauer',       'wx-snowy'],
+    86: ['🌨️','Starke Schneeschauer','wx-snowy'],
+    95: ['⛈️','Gewitter',            'wx-thunder'],
+    96: ['⛈️','Gewitter+Hagel',      'wx-thunder'],
+    99: ['⛈️','Schweres Gewitter',   'wx-thunder'],
+  };
+
+  function render(d, isDemo) {
+    const [emoji, desc, animClass] = WMO[d.weather_code] || ['🌡️','Unbekannt',''];
+    G('wx-loading').classList.add('hidden');
+    G('wx-content').classList.remove('hidden');
+
+    const icon = G('wx-icon');
+    icon.textContent = emoji;
+    // Animations-Klasse setzen (alle alten wx-* entfernen, neue setzen)
+    icon.className = animClass;
+
+    G('wx-temp').textContent  = `${Math.round(d.temperature_2m)}°`;
+    G('wx-desc').textContent  = desc;
+    G('wx-extra').textContent = `Gefühlt ${Math.round(d.apparent_temperature)}° · Feuchte ${Math.round(d.relative_humidity_2m)}%`;
+    G('wx-demo').classList.toggle('hidden', !isDemo);
+  }
+
+  function demo() {
+    render({ weather_code:1, temperature_2m:18, apparent_temperature:16, relative_humidity_2m:62 }, true);
+  }
+
+  async function fetch_(lat, lon) {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}`
+      + `&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code&timezone=auto`;
+    try {
+      const r = await fetch(url);
+      if (!r.ok) throw 0;
+      const data = await r.json();
+      render(data.current, false);
+      lastT = Date.now(); lastLat = lat; lastLon = lon;
+    } catch { /* vorhandene Anzeige behalten */ }
+  }
+
+  function haverM(a1,o1,a2,o2) {
+    const R=6371000, d1=(a2-a1)*Math.PI/180, d2=(o2-o1)*Math.PI/180,
+          s=Math.sin(d1/2)**2+Math.cos(a1*Math.PI/180)*Math.cos(a2*Math.PI/180)*Math.sin(d2/2)**2;
+    return R*2*Math.atan2(Math.sqrt(s),Math.sqrt(1-s));
+  }
+
+  demo();
+
+  return {
+    onPos(pos) {
+      const {latitude:lat,longitude:lon} = pos.coords;
+      if ((Date.now()-lastT)<THROTTLE && lastLat!=null && haverM(lastLat,lastLon,lat,lon)<MIN_DIST) return;
+      fetch_(lat,lon);
+    }
+  };
+})();
+
+
+/* ═══════════════════════════════════════════════════════════════
+   SPEED GAUGE — Analogtacho (SVG arc)
+═══════════════════════════════════════════════════════════════ */
+const GaugeSvc = (function() {
+  const MAX_SPEED  = 200;   // km/h Vollausschlag
+  const ARC_LEN    = 235.62; // 270° von Umfang 314.16
+  const CIRC       = 314.16;
+  const arc        = G('spd-arc');
+  const valText    = G('spd-gauge-val');
+
+  function update(kmh) {
+    const v     = Math.max(0, Math.min(kmh, MAX_SPEED));
+    const len   = (v / MAX_SPEED) * ARC_LEN;
+    const color = v > 130 ? '#FF3B30' : v > 100 ? '#FF9F0A' : '#007AFF';
+
+    arc.setAttribute('stroke-dasharray', `${len.toFixed(2)} ${CIRC}`);
+    arc.setAttribute('stroke', color);
+    valText.textContent        = String(Math.round(v));
+    valText.setAttribute('fill', v > 130 ? '#FF3B30' : v > 100 ? '#FF9F0A' : 'white');
+  }
+
+  update(0);
+  return { update };
+})();
+
+
+/* ═══════════════════════════════════════════════════════════════
+   LOCATION SERVICE — GPS + Kompass
+═══════════════════════════════════════════════════════════════ */
+const LocationSvc = (function() {
+  const DIRS = ['N','NO','O','SO','S','SW','W','NW'];
+
+  function compassLabel(deg) { return DIRS[Math.round(((deg%360)+360)/45)%8]; }
+
+  if ('geolocation' in navigator) {
+    G('sb-gps-lbl').textContent = 'Suche …';
+    G('sb-gps-lbl').style.color = 'var(--t2)';
+
+    navigator.geolocation.watchPosition(
+      pos => {
+        G('sb-gps-lbl').textContent = 'GPS';
+        G('sb-gps-lbl').style.color = 'var(--green)';
+
+        const kmh = pos.coords.speed != null && pos.coords.speed >= 0
+                    ? pos.coords.speed * 3.6 : 0;
+
+        // Analogtacho aktualisieren
+        GaugeSvc.update(kmh);
+
+        MapSvc.onPos(pos);
+        WeatherSvc.onPos(pos);
+      },
+      err => {
+        G('sb-gps-lbl').textContent = err.code === 1 ? 'GPS gesperrt' : 'GPS Fehler';
+        G('sb-gps-lbl').style.color = 'var(--red)';
+      },
+      { enableHighAccuracy:true, maximumAge:2000, timeout:15000 }
+    );
+  } else {
+    G('sb-gps-lbl').textContent = 'GPS n/v';
+  }
+
+  // Kompass
+  function startCompass() {
+    const handler = evt => {
+      let deg = typeof evt.webkitCompassHeading === 'number' && evt.webkitCompassHeading >= 0
+                ? evt.webkitCompassHeading
+                : evt.alpha != null ? (360 - evt.alpha) % 360 : null;
+      if (deg == null) return;
+      G('cmp-arrow').style.transform = `rotate(${deg}deg)`;
+      G('cmp-dir').textContent = compassLabel(deg);
+    };
+
+    if (typeof DeviceOrientationEvent !== 'undefined' &&
+        typeof DeviceOrientationEvent.requestPermission === 'function') {
+      document.addEventListener('click', async function once() {
+        document.removeEventListener('click', once);
+        try {
+          if (await DeviceOrientationEvent.requestPermission() === 'granted')
+            window.addEventListener('deviceorientation', handler, true);
+        } catch(_) {}
+      }, { once: true });
+    } else {
+      window.addEventListener('deviceorientation', handler, true);
+    }
+  }
+
+  startCompass();
+})();
+
+
+/* ═══════════════════════════════════════════════════════════════
+   MAP SERVICE — Leaflet + OSM + Nominatim + OSRM
+   v3.0: Turn-by-turn, ETA-Badge, Off-Route-Erkennung
+═══════════════════════════════════════════════════════════════ */
+const MapSvc = (function() {
+  const TILES = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+  const ATTR  = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+
+  let mapSmall = null, markerSmall  = null;
+  let mapFull  = null, markerFull   = null, routeLayer = null;
+  let curPos   = null;
+  let debTimer = null;
+
+  // Navigations-Zustand
+  let navSteps        = [];          // OSRM-Steps des aktuellen Route
+  let navCurrentStep  = 0;           // Index des aktuell ansteuerten Steps
+  let navDest         = null;        // Ziel-Objekt (aus Nominatim) für Re-Route
+  let navRouteCoords  = [];          // Route-Koordinaten [[lat,lon],...] für Off-Route
+  let navTotalDist    = 0;           // Gesamtdistanz (m)
+  let navTotalDur     = 0;           // Gesamtdauer (s)
+  let navIsActive     = false;
+  let lastRerouteTime = 0;
+  const REROUTE_DIST_M    = 80;      // Abweichungs-Schwelle für Re-Route
+  const REROUTE_COOLDOWN  = 18000;   // Mindestabstand zwischen Re-Routen (ms)
+
+  // Manöver-Icons: [OSRM-modifier → Unicode-Pfeil]
+  const TURN_ICON = {
+    'straight':     '⬆',
+    'slight right': '↗',
+    'right':        '→',
+    'sharp right':  '↘',
+    'uturn':        '↩',
+    'slight left':  '↖',
+    'left':         '←',
+    'sharp left':   '↙',
+  };
+
+  function maneuverIcon(type, modifier) {
+    if (type === 'arrive')                                       return '🏁';
+    if (type === 'depart')                                       return '🚦';
+    if (type === 'roundabout' || type === 'rotary')              return '🔄';
+    if (type === 'fork')       return modifier?.includes('right') ? '↗' : '↖';
+    if (type === 'merge')      return modifier?.includes('right') ? '→' : '←';
+    return TURN_ICON[modifier] || '⬆';
+  }
+
+  function haverM(a1,o1,a2,o2) {
+    const R=6371000, d1=(a2-a1)*Math.PI/180, d2=(o2-o1)*Math.PI/180,
+          s=Math.sin(d1/2)**2+Math.cos(a1*Math.PI/180)*Math.cos(a2*Math.PI/180)*Math.sin(d2/2)**2;
+    return R*2*Math.atan2(Math.sqrt(s),Math.sqrt(1-s));
+  }
+
+  // ── Kleine Karte (Dashboard-Kachel) ─────────────────────────
+  function initSmall() {
+    mapSmall = L.map('map', {
+      zoomControl:false, attributionControl:true,
+      dragging:false, touchZoom:false, scrollWheelZoom:false,
+      doubleClickZoom:false, keyboard:false
+    }).setView([51.165, 10.451], 6);
+
+    L.tileLayer(TILES, { attribution:ATTR, maxZoom:19, subdomains:'abc' }).addTo(mapSmall);
+    mapSmall.getPanes().tilePane.style.filter =
+      'invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9)';
+  }
+
+  // ── Vollbild-Karte ───────────────────────────────────────────
+  function initFull() {
+    const center = curPos ? [curPos.coords.latitude, curPos.coords.longitude] : [51.165, 10.451];
+    const zoom   = curPos ? 15 : 6;
+
+    mapFull = L.map('map-fs-map', { zoomControl:true }).setView(center, zoom);
+    L.tileLayer(TILES, { attribution:ATTR, maxZoom:19, subdomains:'abc' }).addTo(mapFull);
+    mapFull.getPanes().tilePane.style.filter =
+      'invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9)';
+
+    if (curPos) {
+      markerFull = L.circleMarker(center, {
+        radius:8, color:'#007AFF', fillColor:'#007AFF', fillOpacity:1, weight:2
+      }).addTo(mapFull);
+    }
+
+    setTimeout(() => mapFull.invalidateSize(), 60);
+  }
+
+  // ── GPS-Positions-Update ─────────────────────────────────────
+  function onPos(pos) {
+    curPos = pos;
+    const ll = [pos.coords.latitude, pos.coords.longitude];
+
+    if (mapSmall) {
+      if (!markerSmall) {
+        markerSmall = L.circleMarker(ll, {
+          radius:7, color:'#007AFF', fillColor:'#007AFF', fillOpacity:1, weight:2
+        }).addTo(mapSmall);
+      } else { markerSmall.setLatLng(ll); }
+      mapSmall.setView(ll, 15, { animate:true });
+    }
+
+    if (markerFull) markerFull.setLatLng(ll);
+
+    // Navigations-Step + Off-Route prüfen
+    if (navIsActive) {
+      updateNavStep(pos.coords.latitude, pos.coords.longitude);
+      checkOffRoute(pos.coords.latitude, pos.coords.longitude);
+    }
+  }
+
+  // ── ETA-Badge auf Kompakt-Karte ──────────────────────────────
+  function setETABadge(km, durationSec) {
+    if (!km || !durationSec) {
+      G('map-eta-badge').classList.remove('show');
+      return;
+    }
+    const now = new Date();
+    now.setSeconds(now.getSeconds() + durationSec);
+    const eta = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+    G('map-eta-badge').textContent = `${km.toFixed(1)} km · ETA ${eta}`;
+    G('map-eta-badge').classList.add('show');
+  }
+
+  // ── Turn-by-Turn: aktuellen Step anzeigen ───────────────────
+  function updateNavStep(lat, lon) {
+    if (!navSteps.length) return;
+
+    // Nächsten Step bestimmen: wenn wir nah am Startpunkt des nächsten Steps sind, weiterschalten
+    for (let i = navCurrentStep; i < navSteps.length - 1; i++) {
+      const step = navSteps[i];
+      if (!step.maneuver || !step.maneuver.location) continue;
+      const [slon, slat] = step.maneuver.location;
+      const dist = haverM(lat, lon, slat, slon);
+
+      // Wenn wir innerhalb 40 m des Step-Endpunkts sind, zum nächsten Step
+      if (dist < 40 && i === navCurrentStep) {
+        navCurrentStep = Math.min(navCurrentStep + 1, navSteps.length - 1);
+      }
+    }
+
+    showNavBanner();
+  }
+
+  function showNavBanner() {
+    if (!navSteps.length) {
+      G('nav-banner').classList.remove('show');
+      return;
+    }
+
+    const step     = navSteps[navCurrentStep];
+    const maneuver = step.maneuver || {};
+    const icon     = maneuverIcon(maneuver.type, maneuver.modifier);
+    const street   = step.name || step.ref || 'Weiterfahren';
+    const dist     = step.distance || 0;
+    const distStr  = dist >= 1000
+      ? `In ${(dist/1000).toFixed(1)} km`
+      : dist > 0 ? `In ${Math.round(dist)} m` : '';
+
+    G('nav-icon').textContent   = icon;
+    G('nav-street').textContent = street;
+    G('nav-dist').textContent   = distStr;
+    G('nav-banner').classList.add('show');
+
+    // Ankunft: Banner nach kurzer Verzögerung ausblenden
+    if (maneuver.type === 'arrive') {
+      setTimeout(() => {
+        G('nav-banner').classList.remove('show');
+        navIsActive = false;
+      }, 8000);
+    }
+  }
+
+  // ── Off-Route-Erkennung ──────────────────────────────────────
+  function checkOffRoute(lat, lon) {
+    if (!navIsActive || !navRouteCoords.length) return;
+    if (Date.now() - lastRerouteTime < REROUTE_COOLDOWN) return;
+
+    // Abstand zur nächsten Route-Koordinate (alle 5 Punkte samplen für Performance)
+    let minDist = Infinity;
+    for (let i = 0; i < navRouteCoords.length; i += 5) {
+      const [rlat, rlon] = navRouteCoords[i];
+      const d = haverM(lat, lon, rlat, rlon);
+      if (d < minDist) minDist = d;
+      if (minDist < REROUTE_DIST_M) break; // early exit
+    }
+
+    if (minDist > REROUTE_DIST_M && navDest) {
+      lastRerouteTime = Date.now();
+      triggerReroute();
+    }
+  }
+
+  async function triggerReroute() {
+    G('nav-reroute').classList.add('show');
+    try {
+      await selectDest(navDest);
+    } finally {
+      G('nav-reroute').classList.remove('show');
+    }
+  }
+
+  // ── Nominatim-Suche ──────────────────────────────────────────
+  async function searchPlaces(q) {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&accept-language=de`;
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`Nominatim ${r.status}`);
+    return r.json();
+  }
+
+  // ── OSRM-Routing mit Steps ───────────────────────────────────
+  async function calcRoute(fromLat, fromLon, toLat, toLon) {
+    const url = `https://router.project-osrm.org/route/v1/driving/${fromLon},${fromLat};${toLon},${toLat}`
+              + `?overview=full&geometries=geojson&steps=true`;
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`OSRM ${r.status}`);
+    const d = await r.json();
+    if (d.code !== 'Ok' || !d.routes.length) throw new Error('Keine Route');
+    return d.routes[0];
+  }
+
+  // ── Suggestions-Liste ────────────────────────────────────────
+  function showSuggestions(results) {
+    const box = G('map-fs-suggestions');
+    box.innerHTML = '';
+    if (!results.length) { box.classList.remove('show'); return; }
+
+    results.forEach(r => {
+      const parts = (r.display_name||'').split(',');
+      const div = Object.assign(document.createElement('div'), { className:'sug-item' });
+      div.innerHTML = `<div class="sug-name">${parts[0].trim()}</div>`
+                    + `<div class="sug-sub">${parts.slice(1,3).join(',').trim()}</div>`;
+      div.addEventListener('click', () => selectDest(r));
+      box.appendChild(div);
+    });
+    box.classList.add('show');
+  }
+
+  function hideSuggestions() { G('map-fs-suggestions').classList.remove('show'); }
+
+  // ── Ziel auswählen + Route zeichnen ─────────────────────────
+  async function selectDest(place) {
+    hideSuggestions();
+    navDest = place;
+    G('map-fs-input').value = (place.display_name||'').split(',')[0];
+
+    const toLat = parseFloat(place.lat);
+    const toLon = parseFloat(place.lon);
+
+    // Alte Route entfernen
+    if (routeLayer) { mapFull.removeLayer(routeLayer); routeLayer = null; }
+    G('map-fs-route').classList.remove('show');
+    G('nav-banner').classList.remove('show');
+    navSteps       = [];
+    navCurrentStep = 0;
+    navIsActive    = false;
+    navRouteCoords = [];
+    setETABadge(null, null);
+
+    mapFull.setView([toLat, toLon], 13, { animate:true });
+
+    if (curPos) {
+      G('map-fs-loading').classList.add('show');
+      try {
+        const route = await calcRoute(
+          curPos.coords.latitude, curPos.coords.longitude,
+          toLat, toLon
+        );
+
+        // Route-Polyline zeichnen
+        routeLayer = L.geoJSON(route.geometry, {
+          style: { color:'#007AFF', weight:5, opacity:0.92 }
+        }).addTo(mapFull);
+
+        mapFull.fitBounds(routeLayer.getBounds(), { padding:[30,30] });
+
+        // Metriken
+        const km  = (route.distance / 1000).toFixed(1);
+        const min = Math.round(route.duration / 60);
+        const dur = min >= 60 ? `${Math.floor(min/60)} h ${min%60} min` : `${min} min`;
+
+        G('route-main').textContent = `${km} km · ${dur}`;
+        G('route-sub').textContent  = (place.display_name||'').split(',').slice(0,3).join(', ');
+        G('map-fs-route').classList.add('show');
+
+        // Steps für Turn-by-Turn extrahieren
+        if (route.legs && route.legs[0] && route.legs[0].steps) {
+          navSteps = route.legs[0].steps;
+        }
+
+        // Route-Koordinaten für Off-Route-Erkennung extrahieren
+        if (route.geometry && route.geometry.coordinates) {
+          navRouteCoords = route.geometry.coordinates.map(([lon, lat]) => [lat, lon]);
+        }
+
+        navTotalDist = route.distance;
+        navTotalDur  = route.duration;
+        navCurrentStep = 0;
+        navIsActive  = true;
+
+        // Initialen Step anzeigen
+        showNavBanner();
+
+        // ETA-Badge auf Kompakt-Karte aktualisieren
+        setETABadge(route.distance / 1000, route.duration);
+
+      } catch(e) {
+        G('route-main').textContent = 'Route konnte nicht berechnet werden';
+        G('route-sub').textContent  = 'Bitte Verbindung prüfen';
+        G('map-fs-route').classList.add('show');
+      } finally {
+        G('map-fs-loading').classList.remove('show');
+      }
+    }
+  }
+
+  // ── Suche ────────────────────────────────────────────────────
+  async function doSearch() {
+    const q = G('map-fs-input').value.trim();
+    if (q.length < 2) return;
+    hideSuggestions();
+    try {
+      const res = await searchPlaces(q);
+      showSuggestions(res);
+    } catch(e) {
+      console.warn('Nominatim:', e.message);
+    }
+  }
+
+  G('map-fs-input').addEventListener('input', () => {
+    clearTimeout(debTimer);
+    const q = G('map-fs-input').value.trim();
+    if (q.length < 3) { hideSuggestions(); return; }
+    debTimer = setTimeout(doSearch, 380);
+  });
+  G('map-fs-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
+  });
+  G('map-fs-search-btn').addEventListener('click', doSearch);
+
+  G('map-expand').addEventListener('click', () => {
+    G('map-fs').classList.add('open');
+    if (!mapFull) initFull(); else setTimeout(() => mapFull.invalidateSize(), 60);
+  });
+
+  G('map-fs-close-btn').addEventListener('click', () => {
+    G('map-fs').classList.remove('open');
+    hideSuggestions();
+  });
+
+  new ResizeObserver(() => {
+    if (mapSmall) setTimeout(() => mapSmall.invalidateSize(), 50);
+  }).observe(G('tile-map'));
+
+  initSmall();
+  return { onPos };
+})();
+
+
+/* ═══════════════════════════════════════════════════════════════
+   MUSIC SERVICE — HTML5 Audio + Media Session API
+   v3.0: Album-Art-Blur-Hintergrund
+═══════════════════════════════════════════════════════════════ */
+(function MusicSvc() {
+  const audio   = G('audio');
+  const playBtn = G('mu-play');
+  const artBg   = G('mu-art-bg');
+  const tile    = G('tile-music');
+  let playlist = [], cur = 0;
+
+  function parseName(name) {
+    const base = name.replace(/\.[^.]+$/,'');
+    const m    = base.match(/^(.+?)\s[-–—]\s(.+)$/);
+    return m ? { artist:m[1].trim(), title:m[2].trim() } : { artist:'–', title:base };
+  }
+
+  // Album-Art-Blur-Hintergrund aktualisieren
+  function setArtBackground(objectUrl) {
+    if (objectUrl) {
+      artBg.style.backgroundImage = `url(${objectUrl})`;
+      artBg.classList.add('active');
+      tile.classList.remove('playing-nogfx');
+    } else {
+      artBg.classList.remove('active');
+      artBg.style.backgroundImage = '';
+    }
+  }
+
+  // Animierter Farbverlauf wenn Musik läuft (ohne Artwork)
+  function setPlayingGlow(isPlaying, hasArtwork) {
+    if (isPlaying && !hasArtwork) {
+      tile.classList.add('playing-nogfx');
+    } else {
+      tile.classList.remove('playing-nogfx');
+    }
+  }
+
+  function loadTrack(idx) {
+    if (!playlist.length) return;
+    const t = playlist[idx];
+
+    audio.src = t.url;
+    audio.load();
+
+    G('mu-title').textContent  = t.title;
+    G('mu-artist').textContent = t.artist;
+    G('mu-prog').style.width   = '0%';
+
+    // Album-Art aus Bild-URL (falls vorhanden) als Blur-Hintergrund setzen
+    if (t.coverUrl) {
+      setArtBackground(t.coverUrl);
+    } else {
+      setArtBackground(null);
+    }
+
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: t.title, artist: t.artist
+      });
+    }
+
+    updateUI();
+  }
+
+  function updateUI() {
+    const playing = !audio.paused && !audio.ended && audio.readyState > 2;
+    const hasArt  = !!artBg.style.backgroundImage;
+    playBtn.textContent = playing ? '⏸' : '▶';
+    setPlayingGlow(playing, hasArt);
+
+    if (playing && G('mu-title').textContent !== 'Kein Titel') {
+      G('sb-music').classList.remove('hidden');
+      G('sb-music-title').textContent = G('mu-title').textContent.substring(0,18);
+    } else {
+      G('sb-music').classList.add('hidden');
+    }
+  }
+
+  playBtn.addEventListener('click', () => {
+    if (!playlist.length) return;
+    if (audio.paused || audio.ended) {
+      audio.play().then(updateUI).catch(() => updateUI());
+    } else {
+      audio.pause();
+    }
+  });
+
+  G('mu-next').addEventListener('click', () => {
+    if (!playlist.length) return;
+    cur = (cur + 1) % playlist.length;
+    loadTrack(cur);
+  });
+
+  G('mu-prev').addEventListener('click', () => {
+    if (!playlist.length) return;
+    if (audio.currentTime >= 3) { audio.currentTime = 0; return; }
+    cur = (cur - 1 + playlist.length) % playlist.length;
+    loadTrack(cur);
+  });
+
+  // Coverbilder aus Bild-Dateien extrahieren (wenn gemeinsam mit Audio ausgewählt)
+  function findCoverForTrack(title, imageFiles) {
+    const lower = title.toLowerCase();
+    for (const f of imageFiles) {
+      const fname = f.name.replace(/\.[^.]+$/,'').toLowerCase();
+      if (fname === lower || fname === 'cover' || fname === 'folder' || fname === 'artwork') {
+        return URL.createObjectURL(f);
+      }
+    }
+    return null;
+  }
+
+  G('mu-file').addEventListener('change', function() {
+    const allFiles = [...this.files];
+    if (!allFiles.length) return;
+
+    // Trennen: Audio- und Bild-Dateien
+    const audioFiles = allFiles.filter(f => f.type.startsWith('audio/'));
+    const imageFiles = allFiles.filter(f => f.type.startsWith('image/'));
+
+    if (!audioFiles.length) return;
+
+    // Alte URLs freigeben
+    playlist.forEach(p => {
+      URL.revokeObjectURL(p.url);
+      if (p.coverUrl) URL.revokeObjectURL(p.coverUrl);
+    });
+
+    playlist = audioFiles.map(f => {
+      const parsed   = parseName(f.name);
+      const coverUrl = findCoverForTrack(parsed.title, imageFiles)
+                    || (imageFiles.length === 1 ? URL.createObjectURL(imageFiles[0]) : null);
+      return { ...parsed, url: URL.createObjectURL(f), coverUrl };
+    });
+
+    cur = 0;
+    loadTrack(cur);
+    G('mu-load-lbl').textContent = `${audioFiles.length} Datei${audioFiles.length>1?'en':''} geladen`;
+  });
+
+  audio.addEventListener('play',       updateUI);
+  audio.addEventListener('pause',      updateUI);
+  audio.addEventListener('ended',      () => { cur=(cur+1)%Math.max(1,playlist.length); loadTrack(cur); });
+  audio.addEventListener('timeupdate', () => {
+    if (audio.duration && isFinite(audio.duration))
+      G('mu-prog').style.width = `${(audio.currentTime/audio.duration*100).toFixed(1)}%`;
+  });
+
+  if ('mediaSession' in navigator) {
+    const ms = navigator.mediaSession;
+    ms.setActionHandler('play',          () => audio.play());
+    ms.setActionHandler('pause',         () => audio.pause());
+    ms.setActionHandler('nexttrack',     () => G('mu-next').click());
+    ms.setActionHandler('previoustrack', () => G('mu-prev').click());
+    ms.setActionHandler('seekbackward',  () => { audio.currentTime = Math.max(0, audio.currentTime-10); });
+    ms.setActionHandler('seekforward',   () => { audio.currentTime = Math.min(audio.duration||0, audio.currentTime+10); });
+  }
+})();
+
+
+/* ═══════════════════════════════════════════════════════════════
+   PHONE SERVICE
+═══════════════════════════════════════════════════════════════ */
+(function PhoneSvc() {
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+  if (isMobile) {
+    G('ph-app').style.display = 'flex';
+    G('ph-hint').textContent  = 'Notruf — Wähler öffnen';
+  } else {
+    G('ph-hint').textContent  = 'Auf dem Handy: Wähler öffnen';
+  }
+
+  function call(num) {
+    if (isMobile) {
+      window.location.href = `tel:${num}`;
+    } else {
+      navigator.clipboard?.writeText(num).then(() => {
+        const btn = G(`ph-${num}`);
+        const orig = btn.textContent;
+        btn.textContent = '✓ Kopiert';
+        setTimeout(() => btn.textContent = orig, 1500);
+      }).catch(() => window.open(`tel:${num}`, '_blank'));
+    }
+  }
+
+  G('ph-112').addEventListener('click', () => call('112'));
+  G('ph-110').addEventListener('click', () => call('110'));
+  G('ph-app').addEventListener('click', () => {
+    if (isMobile) window.location.href = 'tel:';
+  });
+})();
+
+
+/* ═══════════════════════════════════════════════════════════════
+   SCREEN WAKE LOCK
+═══════════════════════════════════════════════════════════════ */
+(async () => {
+  if ('wakeLock' in navigator) {
+    const acquire = async () => {
+      try { await navigator.wakeLock.request('screen'); } catch (_) {}
+    };
+    await acquire();
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') acquire();
+    });
+  }
+})();
+
+
+/* ═══════════════════════════════════════════════════════════════
+   SERVICE WORKER
+═══════════════════════════════════════════════════════════════ */
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+</script>
+</body>
+</html>
