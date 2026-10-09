@@ -1298,6 +1298,12 @@ const MapSvc = (function() {
 
   function hideSuggestions() { G('map-fs-suggestions').classList.remove('show'); }
 
+  function showSearchMsg(msg) {
+    const box = G('map-fs-suggestions');
+    box.innerHTML = `<div class="sug-item"><div class="sug-name" style="text-align:center;padding:4px 0;color:var(--t2)">${msg}</div></div>`;
+    box.classList.add('show');
+  }
+
   // ── Ziel auswählen + Route zeichnen ─────────────────────────
   async function selectDest(place) {
     hideSuggestions();
@@ -1379,11 +1385,22 @@ const MapSvc = (function() {
     const q = G('map-fs-input').value.trim();
     if (q.length < 2) return;
     hideSuggestions();
+    const btn = G('map-fs-search-btn');
+    btn.textContent = '⏳';
+    btn.disabled = true;
     try {
       const res = await searchPlaces(q);
-      showSuggestions(res);
+      if (!res.length) {
+        showSearchMsg('Keine Ergebnisse für „' + q + '"');
+      } else {
+        showSuggestions(res);
+      }
     } catch(e) {
       console.warn('Nominatim:', e.message);
+      showSearchMsg('⚠️ Suche fehlgeschlagen – Verbindung prüfen');
+    } finally {
+      btn.textContent = '🔍 Suchen';
+      btn.disabled = false;
     }
   }
 
@@ -1591,24 +1608,32 @@ const MapSvc = (function() {
     G('ph-hint').textContent  = 'Auf dem Handy: Wähler öffnen';
   }
 
+  // Zuverlässiges tel:-Öffnen im PWA-Standalone-Mode via Anchor-Click
+  function openTelUri(uri) {
+    const a = document.createElement('a');
+    a.href = uri;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { try { document.body.removeChild(a); } catch(_) {} }, 200);
+  }
+
   function call(num) {
     if (isMobile) {
-      window.location.href = `tel:${num}`;
+      openTelUri(`tel:${num}`);
     } else {
       navigator.clipboard?.writeText(num).then(() => {
         const btn = G(`ph-${num}`);
         const orig = btn.textContent;
         btn.textContent = '✓ Kopiert';
         setTimeout(() => btn.textContent = orig, 1500);
-      }).catch(() => window.open(`tel:${num}`, '_blank'));
+      }).catch(() => openTelUri(`tel:${num}`));
     }
   }
 
   G('ph-112').addEventListener('click', () => call('112'));
   G('ph-110').addEventListener('click', () => call('110'));
-  G('ph-app').addEventListener('click', () => {
-    if (isMobile) window.location.href = 'tel:';
-  });
+  G('ph-app').addEventListener('click', () => openTelUri('tel:'));
 })();
 
 
