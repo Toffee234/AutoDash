@@ -138,19 +138,21 @@ body {
 #tile-map   { grid-column: 1/3; grid-row: 2; }
 #tile-music { grid-column: 1;   grid-row: 3; }
 #tile-phone { grid-column: 2;   grid-row: 3; }
-#tile-speed { grid-column: 1/3; grid-row: 4; }
+#tile-speed     { grid-column: 1;   grid-row: 4; }
+#tile-shortcuts { grid-column: 2;   grid-row: 4; }
 
 /* Landscape */
 @media (orientation: landscape) {
   #grid {
     grid-template-columns: 1fr 260px;
-    grid-template-rows: auto 1fr auto auto;
+    grid-template-rows: auto 1fr auto auto auto;
   }
-  .cw-row     { grid-column: 2; grid-row: 1; }
-  #tile-map   { grid-column: 1; grid-row: 1/5; }
-  #tile-music { grid-column: 2; grid-row: 2; }
-  #tile-phone { grid-column: 2; grid-row: 3; }
-  #tile-speed { grid-column: 2; grid-row: 4; }
+  .cw-row         { grid-column: 2; grid-row: 1; }
+  #tile-map       { grid-column: 1; grid-row: 1/6; }
+  #tile-music     { grid-column: 2; grid-row: 2; }
+  #tile-phone     { grid-column: 2; grid-row: 3; }
+  #tile-speed     { grid-column: 2; grid-row: 4; }
+  #tile-shortcuts { grid-column: 2; grid-row: 5; }
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -492,6 +494,117 @@ body {
 #map-fs-loading.show { display: flex; }
 
 /* ════════════════════════════════════════════════════════════════
+   SHORTCUTS TILE
+════════════════════════════════════════════════════════════════ */
+#tile-shortcuts .tile-inner { padding: 6px 6px 4px; gap: 4px; }
+
+.sc-lbl-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 4px 2px;
+}
+.sc-edit-toggle {
+  background: none; border: none;
+  color: var(--t2); font-size: 15px;
+  padding: 2px 4px; cursor: pointer;
+  line-height: 1;
+}
+
+.sc-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+}
+
+.sc-btn {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 3px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  padding: 7px 3px;
+  cursor: pointer; color: var(--t1);
+  font-family: var(--font);
+  min-height: 50px;
+  position: relative;
+  -webkit-user-select: none; user-select: none;
+  transition: background 0.12s;
+}
+.sc-btn:active { background: rgba(255,255,255,0.14); }
+.sc-btn-icon  { font-size: 20px; line-height: 1.1; }
+.sc-btn-name  {
+  font-size: 9px; color: var(--t2);
+  max-width: 100%; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+  padding: 0 2px;
+}
+.sc-btn-del {
+  position: absolute; top: -5px; right: -5px;
+  background: var(--red); color: #fff;
+  border-radius: 50%; width: 17px; height: 17px;
+  font-size: 9px; display: none;
+  align-items: center; justify-content: center;
+  cursor: pointer; border: none; font-family: var(--font);
+  z-index: 2;
+}
+.sc-btn-del.vis { display: flex; }
+
+.sc-add {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: rgba(0,122,255,0.10);
+  border: 1.5px dashed rgba(0,122,255,0.45);
+  border-radius: 11px; min-height: 50px;
+  cursor: pointer; color: var(--accent);
+  font-size: 24px; font-family: var(--font);
+}
+.sc-add:active { background: rgba(0,122,255,0.20); }
+
+/* Shortcut-Modal */
+#sc-modal {
+  position: fixed; inset: 0; z-index: 9200;
+  background: rgba(0,0,0,0.72);
+  display: none; align-items: center; justify-content: center;
+  padding: 20px;
+}
+#sc-modal.open { display: flex; }
+.sc-modal-box {
+  background: #2C2C2E;
+  border: 1px solid var(--border-act);
+  border-radius: 18px; padding: 20px;
+  width: 100%; max-width: 320px;
+  display: flex; flex-direction: column; gap: 13px;
+}
+.sc-modal-title {
+  font-size: 17px; font-weight: 700;
+  text-align: center; color: var(--t1);
+}
+.sc-field { display: flex; flex-direction: column; gap: 5px; }
+.sc-field label { font-size: 12px; color: var(--t2); font-weight: 500; }
+.sc-field input {
+  background: rgba(255,255,255,0.09);
+  border: 1px solid var(--border);
+  border-radius: 10px; color: var(--t1);
+  font-size: 15px; font-family: var(--font);
+  padding: 9px 12px; outline: none;
+  -webkit-appearance: none; width: 100%;
+}
+.sc-field input:focus { border-color: var(--accent); }
+.sc-modal-btns { display: flex; gap: 8px; }
+.sc-modal-btns button {
+  flex: 1; padding: 11px; border-radius: 12px;
+  font-size: 14px; font-weight: 600; font-family: var(--font);
+}
+.sc-save-btn   { background: var(--accent); color: #fff; }
+.sc-cancel-btn { background: rgba(255,255,255,0.10); color: var(--t1); }
+.sc-del-btn    {
+  background: var(--red); color: #fff;
+  padding: 10px; border-radius: 12px;
+  font-size: 14px; font-weight: 600; font-family: var(--font);
+  width: 100%; display: none;
+}
+
+/* ════════════════════════════════════════════════════════════════
    MUSIC TILE — Album-Art-Blur-Hintergrund
 ════════════════════════════════════════════════════════════════ */
 #tile-music .tile-inner { gap: 6px; justify-content: space-between; }
@@ -816,10 +929,45 @@ body {
         </div>
       </div>
 
+      <!-- Shortcuts -->
+      <div class="tile" id="tile-shortcuts">
+        <div class="tile-inner">
+          <div class="sc-lbl-row">
+            <span class="tile-lbl" style="margin-bottom:0">Verknüpfungen</span>
+            <button class="sc-edit-toggle" id="sc-edit-btn" title="Bearbeiten">✎</button>
+          </div>
+          <div class="sc-grid" id="sc-grid"></div>
+        </div>
+      </div>
+
     </div><!-- /#grid -->
   </div><!-- /#main -->
 
 </div><!-- /#app -->
+
+<!-- SHORTCUT EDITOR MODAL -->
+<div id="sc-modal">
+  <div class="sc-modal-box">
+    <div class="sc-modal-title" id="sc-modal-title">Verknüpfung hinzufügen</div>
+    <div class="sc-field">
+      <label>Symbol (Emoji)</label>
+      <input type="text" id="sc-input-icon" maxlength="4" placeholder="🚗" inputmode="text">
+    </div>
+    <div class="sc-field">
+      <label>Name</label>
+      <input type="text" id="sc-input-name" placeholder="App-Name" maxlength="18">
+    </div>
+    <div class="sc-field">
+      <label>URL / App-Schema</label>
+      <input type="text" id="sc-input-url" placeholder="spotify:// oder https://…" inputmode="url" autocapitalize="none" autocorrect="off">
+    </div>
+    <div class="sc-modal-btns">
+      <button class="sc-cancel-btn" id="sc-cancel-btn">Abbrechen</button>
+      <button class="sc-save-btn"   id="sc-save-btn">Speichern</button>
+    </div>
+    <button class="sc-del-btn" id="sc-del-btn">🗑 Löschen</button>
+  </div>
+</div>
 
 <!-- MAP FULLSCREEN MODAL -->
 <div id="map-fs">
@@ -1634,6 +1782,139 @@ const MapSvc = (function() {
   G('ph-112').addEventListener('click', () => call('112'));
   G('ph-110').addEventListener('click', () => call('110'));
   G('ph-app').addEventListener('click', () => openTelUri('tel:'));
+})();
+
+
+/* ═══════════════════════════════════════════════════════════════
+   SHORTCUTS SERVICE — v3.1
+   Verknüpfungen zu Apps/URLs — konfigurierbar, localStorage-persistent
+═══════════════════════════════════════════════════════════════ */
+(function ShortcutSvc() {
+  const LS_KEY  = 'autodash_shortcuts_v1';
+  const MAX_SC  = 6; // 2 Reihen × 3 Spalten
+
+  const DEFAULTS = [
+    { icon: '🗺️', name: 'Apple Maps', url: 'maps://' },
+    { icon: '🎵', name: 'Spotify',    url: 'spotify://' },
+    { icon: '💬', name: 'WhatsApp',   url: 'whatsapp://' },
+    { icon: '🏎️', name: 'Waze',       url: 'waze://' },
+  ];
+
+  let shortcuts = [];
+  let editMode  = false;
+  let editIdx   = -1; // -1 = neu
+
+  // ── Persistenz ───────────────────────────────────────────────
+  function load() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      shortcuts  = raw ? JSON.parse(raw) : [...DEFAULTS];
+    } catch(_) { shortcuts = [...DEFAULTS]; }
+  }
+  function persist() {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(shortcuts)); } catch(_) {}
+  }
+
+  // ── URL/App-Schema öffnen (zuverlässig im PWA-Standalone-Mode) ─
+  function openUri(url) {
+    if (!url) return;
+    const a = document.createElement('a');
+    a.href = url; a.target = '_blank'; a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { try { document.body.removeChild(a); } catch(_) {} }, 200);
+  }
+
+  // ── Kacheln rendern ──────────────────────────────────────────
+  function render() {
+    const grid = G('sc-grid');
+    grid.innerHTML = '';
+
+    shortcuts.forEach((sc, i) => {
+      const btn  = document.createElement('button');
+      btn.className = 'sc-btn';
+      btn.innerHTML = `<span class="sc-btn-del" data-i="${i}">✕</span>`
+                    + `<span class="sc-btn-icon">${sc.icon || '📎'}</span>`
+                    + `<span class="sc-btn-name">${escHtml(sc.name || 'App')}</span>`;
+
+      const del = btn.querySelector('.sc-btn-del');
+      if (editMode) del.classList.add('vis');
+
+      btn.addEventListener('click', () => {
+        if (editMode) { openModal(i); }
+        else          { openUri(sc.url); }
+      });
+      del.addEventListener('click', e => {
+        e.stopPropagation();
+        shortcuts.splice(i, 1);
+        persist(); render();
+      });
+
+      grid.appendChild(btn);
+    });
+
+    // "+" Hinzufügen-Button (solange Platz vorhanden)
+    if (shortcuts.length < MAX_SC) {
+      const add = document.createElement('button');
+      add.className = 'sc-add';
+      add.textContent = '+';
+      add.title = 'Verknüpfung hinzufügen';
+      add.addEventListener('click', () => { editIdx = -1; openModal(-1); });
+      grid.appendChild(add);
+    }
+  }
+
+  // ── Modal ────────────────────────────────────────────────────
+  function openModal(idx) {
+    editIdx = idx;
+    const isNew = idx === -1;
+    G('sc-modal-title').textContent   = isNew ? 'Verknüpfung hinzufügen' : 'Verknüpfung bearbeiten';
+    G('sc-input-icon').value          = isNew ? '' : (shortcuts[idx].icon || '');
+    G('sc-input-name').value          = isNew ? '' : (shortcuts[idx].name || '');
+    G('sc-input-url').value           = isNew ? '' : (shortcuts[idx].url  || '');
+    G('sc-del-btn').style.display     = isNew ? 'none' : 'block';
+    G('sc-modal').classList.add('open');
+    setTimeout(() => G('sc-input-name').focus(), 60);
+  }
+  function closeModal() { G('sc-modal').classList.remove('open'); }
+
+  // ── Event-Listener ───────────────────────────────────────────
+  G('sc-edit-btn').addEventListener('click', () => {
+    editMode = !editMode;
+    G('sc-edit-btn').textContent = editMode ? '✓' : '✎';
+    G('sc-edit-btn').style.color = editMode ? 'var(--accent)' : '';
+    render();
+  });
+
+  G('sc-save-btn').addEventListener('click', () => {
+    const icon = G('sc-input-icon').value.trim() || '📎';
+    const name = G('sc-input-name').value.trim() || 'App';
+    const url  = G('sc-input-url').value.trim();
+    if (!url) { G('sc-input-url').focus(); return; }
+    if (editIdx === -1) shortcuts.push({ icon, name, url });
+    else shortcuts[editIdx] = { icon, name, url };
+    persist(); closeModal(); render();
+  });
+
+  G('sc-del-btn').addEventListener('click', () => {
+    if (editIdx >= 0) {
+      shortcuts.splice(editIdx, 1);
+      persist(); closeModal(); render();
+    }
+  });
+
+  G('sc-cancel-btn').addEventListener('click', closeModal);
+  G('sc-modal').addEventListener('click', e => {
+    if (e.target === G('sc-modal')) closeModal();
+  });
+
+  // ── Hilfsfunktionen ──────────────────────────────────────────
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  load();
+  render();
 })();
 
 
