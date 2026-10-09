@@ -6,14 +6,14 @@
 
 'use strict';
 
-const VERSION    = 'autodash-v3.0';
+const VERSION    = 'autodash-v3.1';
 const SHELL_CACHE = `${VERSION}-shell`;
 const TILE_CACHE  = `${VERSION}-tiles`;
 
 // ── Files to pre-cache on install (app shell) ─────────────────
 const SHELL_FILES = [
-  '/autodash.html',
-  '/manifest.json',
+  '/AutoDash/autodash.html',
+  '/AutoDash/manifest.json',
   // Leaflet from CDN — cached if fetch succeeds
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js',
@@ -100,7 +100,7 @@ async function shellStrategy(request) {
   } catch (_) {
     // Offline fallback: return cached autodash.html for navigation requests
     if (request.mode === 'navigate') {
-      return caches.match('/autodash.html');
+      return caches.match('/AutoDash/autodash.html');
     }
     return new Response('Offline', { status: 503 });
   }

@@ -2,13 +2,13 @@
   "name": "AutoDash — CarPlay-Ersatz",
   "short_name": "AutoDash",
   "description": "CarPlay-ähnliches Dashboard für iPhone & iPad",
-  "start_url": "/autodash.html",
+  "start_url": "/AutoDash/autodash.html",
   "display": "fullscreen",
   "orientation": "any",
   "background_color": "#171717",
   "theme_color": "#171717",
   "lang": "de",
-  "scope": "/",
+  "scope": "/AutoDash/",
   "icons": [
     {
       "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%23171717'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-size='320' font-family='system-ui'%3E🚗%3C/text%3E%3C/svg%3E",
