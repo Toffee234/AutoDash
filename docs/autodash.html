@@ -145,7 +145,13 @@ body {
 @media (orientation: landscape) {
   #grid {
     grid-template-columns: 1fr 260px;
-    grid-template-rows: auto 1fr auto auto auto;
+    /* fr-Verteilung statt auto — alle Kacheln teilen den Platz proportional.
+       minmax garantiert Mindesthöhe, damit Content nicht abgeschnitten wird. */
+    grid-template-rows: auto
+                        minmax(80px, 1.6fr)
+                        minmax(65px, 1fr)
+                        minmax(65px, 1fr)
+                        minmax(80px, 1.4fr);
   }
   .cw-row         { grid-column: 2; grid-row: 1; }
   #tile-map       { grid-column: 1; grid-row: 1/6; }
@@ -153,6 +159,54 @@ body {
   #tile-phone     { grid-column: 2; grid-row: 3; }
   #tile-speed     { grid-column: 2; grid-row: 4; }
   #tile-shortcuts { grid-column: 2; grid-row: 5; }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   LANDSCAPE COMPACT MODE — iPhone/iPad Landscape
+   Kleinere Abstände & versteckte Elemente damit alle 4 Kacheln
+   auch in ~320–390 px Viewport-Höhe vollständig bedienbar sind.
+════════════════════════════════════════════════════════════════ */
+@media (orientation: landscape) {
+  /* Kachel-Padding reduzieren */
+  #grid > .tile .tile-inner  { padding: 6px 10px; }
+  /* Speed hat eigenes horizontales Padding */
+  #tile-speed .tile-inner    { padding: 4px 12px; }
+
+  /* Clock: kompakter */
+  #clk-hhmm { font-size: clamp(20px, 4vw, 28px); }
+  #clk-ss   { font-size: 14px; }
+  #clk-date { font-size: 9px;  margin-top: 1px; }
+
+  /* Wetter: kompakter */
+  #wx-temp, #wx-icon { font-size: clamp(18px, 3.5vw, 24px); }
+  #wx-desc           { font-size: 9px; margin-top: 1px; }
+  #wx-extra          { display: none; }
+
+  /* ── Musik-Kachel: Art kompakt, Artist + Laderezeile verbergen ── */
+  #mu-art     { width: 34px; height: 34px; font-size: 14px; }
+  #mu-artist  { display: none; }
+  #mu-title   { font-size: 11px; }
+  #mu-load-lbl { font-size: 9px; padding: 2px 6px; }  /* Load-Label kompakt, aber NICHT versteckt */
+  .mu-btn     { min-height: 26px; font-size: 18px; }
+  #mu-play    { font-size: 22px; }
+  #mu-info    { gap: 7px; }
+
+  /* ── Telefon-Kachel: Icon + Hint verbergen, Buttons kompakter ── */
+  #ph-icon  { display: none; }
+  #ph-hint  { display: none; }
+  #ph-idle  { gap: 5px; }
+  .emrg-btn { min-height: 28px; padding: 4px 4px; font-size: 11px; }
+
+  /* ── Speed-Kachel: Gauge kleiner, Compass-Text kompakter ── */
+  #spd-gauge  { width: 60px; height: 60px; }
+  #compass    { font-size: 13px; }
+  #cmp-arrow  { font-size: 18px; }
+
+  /* ── Shortcuts-Kachel: Label-Reihe kompakter, Buttons kleiner ── */
+  .sc-lbl-row { margin-bottom: 2px; }
+  .sc-btn     { min-height: 34px; font-size: 18px; }
+  .sc-name    { font-size: 8px; }
+  .sc-grid    { gap: 5px; }
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -1786,14 +1840,21 @@ const MapSvc = (function() {
     G('ph-hint').textContent  = 'Auf dem Handy: Wähler öffnen';
   }
 
-  // Zuverlässiges tel:-Öffnen im PWA-Standalone-Mode via Anchor-Click
+  // Zuverlässiges tel:-Öffnen im PWA-Standalone-Mode
+  // window.location.href ist auf iOS Safari zuverlässiger als a.click();
+  // iOS öffnet die Telefon-App und kehrt danach automatisch zur PWA zurück.
   function openTelUri(uri) {
-    const a = document.createElement('a');
-    a.href = uri;
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => { try { document.body.removeChild(a); } catch(_) {} }, 200);
+    try {
+      window.location.href = uri;
+    } catch (_) {
+      // Fallback: versteckter Anker
+      const a = document.createElement('a');
+      a.href = uri;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { try { document.body.removeChild(a); } catch(_) {} }, 200);
+    }
   }
 
   function call(num) {
