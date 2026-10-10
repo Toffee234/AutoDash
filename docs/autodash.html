@@ -141,72 +141,78 @@ body {
 #tile-speed     { grid-column: 1;   grid-row: 4; }
 #tile-shortcuts { grid-column: 2;   grid-row: 4; }
 
-/* Landscape */
+/* Landscape — 3-Spalten-Layout für volle horizontale Nutzung
+   Viewport iPhone 17 Pro landscape: 852 × 393 pt (minus Statusbar ~26px → ~367px Höhe)
+   Spalten: Karte (2fr ≈ 413px) | Mitte (1fr ≈ 207px) | Rechts (1fr ≈ 207px)
+   Zeilen: 4 × 1fr ≈ 92px je Zeile */
 @media (orientation: landscape) {
   #grid {
-    grid-template-columns: 1fr 260px;
-    /* fr-Verteilung statt auto — alle Kacheln teilen den Platz proportional.
-       minmax garantiert Mindesthöhe, damit Content nicht abgeschnitten wird. */
-    grid-template-rows: auto
-                        minmax(80px, 1.6fr)
-                        minmax(65px, 1fr)
-                        minmax(65px, 1fr)
-                        minmax(80px, 1.4fr);
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: repeat(4, 1fr);
   }
-  .cw-row         { grid-column: 2; grid-row: 1; }
-  #tile-map       { grid-column: 1; grid-row: 1/6; }
-  #tile-music     { grid-column: 2; grid-row: 2; }
-  #tile-phone     { grid-column: 2; grid-row: 3; }
-  #tile-speed     { grid-column: 2; grid-row: 4; }
-  #tile-shortcuts { grid-column: 2; grid-row: 5; }
+  /* Karte: volle Höhe, linke Spalte */
+  #tile-map       { grid-column: 1;   grid-row: 1/5; }
+  /* Uhr + Wetter: Row 1, beide rechten Spalten */
+  .cw-row         { grid-column: 2/4; grid-row: 1; }
+  /* Musik: Row 2+3 Mitte (2 Zeilen ≈ 184px — genug für Playback-UI) */
+  #tile-music     { grid-column: 2;   grid-row: 2/4; }
+  /* Telefon + Speed je 1 Zeile ganz rechts */
+  #tile-phone     { grid-column: 3;   grid-row: 2; }
+  #tile-speed     { grid-column: 3;   grid-row: 3; }
+  /* Shortcuts: Row 4, volle Breite der rechten 2 Spalten */
+  #tile-shortcuts { grid-column: 2/4; grid-row: 4; }
 }
 
 /* ════════════════════════════════════════════════════════════════
    LANDSCAPE COMPACT MODE — iPhone/iPad Landscape
-   Kleinere Abstände & versteckte Elemente damit alle 4 Kacheln
-   auch in ~320–390 px Viewport-Höhe vollständig bedienbar sind.
+   Kleinere Abstände & versteckte Elemente damit alle Kacheln
+   in ~367 px netto Viewport-Höhe (iPhone 17 Pro landscape) passen.
 ════════════════════════════════════════════════════════════════ */
 @media (orientation: landscape) {
+  /* Status-Bar flacher, Main-Padding reduzieren */
+  #status-bar { height: 26px; padding: 0 10px; }
+  #main       { padding: 5px var(--pad); }
+
   /* Kachel-Padding reduzieren */
-  #grid > .tile .tile-inner  { padding: 6px 10px; }
-  /* Speed hat eigenes horizontales Padding */
-  #tile-speed .tile-inner    { padding: 4px 12px; }
+  #grid > .tile .tile-inner  { padding: 5px 8px; }
+  #tile-speed .tile-inner    { padding: 4px 10px; }
 
-  /* Clock: kompakter */
-  #clk-hhmm { font-size: clamp(20px, 4vw, 28px); }
-  #clk-ss   { font-size: 14px; }
+  /* Tile-Labels ausblenden — jede Zeile ist nur ~92px */
+  .tile-lbl { display: none; }
+
+  /* ── Uhr+Wetter: nebeneinander in einer Zeile ── */
+  #clk-hhmm { font-size: clamp(18px, 3.5vw, 26px); }
+  #clk-ss   { font-size: 12px; }
   #clk-date { font-size: 9px;  margin-top: 1px; }
-
-  /* Wetter: kompakter */
-  #wx-temp, #wx-icon { font-size: clamp(18px, 3.5vw, 24px); }
+  #wx-temp, #wx-icon { font-size: clamp(16px, 3vw, 22px); }
   #wx-desc           { font-size: 9px; margin-top: 1px; }
   #wx-extra          { display: none; }
 
-  /* ── Musik-Kachel: Art kompakt, Artist + Laderezeile verbergen ── */
-  #mu-art     { width: 34px; height: 34px; font-size: 14px; }
-  #mu-artist  { display: none; }
+  /* ── Musik-Kachel: 2 Zeilen (~184px) — Artist wieder sichtbar ── */
+  #mu-art     { width: 38px; height: 38px; font-size: 15px; }
+  #mu-artist  { display: block; font-size: 10px; }
   #mu-title   { font-size: 11px; }
-  #mu-load-lbl { font-size: 9px; padding: 2px 6px; }  /* Load-Label kompakt, aber NICHT versteckt */
-  .mu-btn     { min-height: 26px; font-size: 18px; }
+  #mu-load-lbl { font-size: 9px; padding: 2px 6px; }
+  .mu-btn     { min-height: 28px; font-size: 18px; }
   #mu-play    { font-size: 22px; }
-  #mu-info    { gap: 7px; }
+  #mu-info    { gap: 6px; }
 
   /* ── Telefon-Kachel: Icon + Hint verbergen, Buttons kompakter ── */
   #ph-icon  { display: none; }
   #ph-hint  { display: none; }
-  #ph-idle  { gap: 5px; }
-  .emrg-btn { min-height: 28px; padding: 4px 4px; font-size: 11px; }
+  #ph-idle  { gap: 4px; }
+  .emrg-btn { min-height: 24px; padding: 3px 4px; font-size: 10px; }
 
-  /* ── Speed-Kachel: Gauge kleiner, Compass-Text kompakter ── */
-  #spd-gauge  { width: 60px; height: 60px; }
-  #compass    { font-size: 13px; }
-  #cmp-arrow  { font-size: 18px; }
+  /* ── Speed-Kachel: Gauge kleiner ── */
+  #spd-gauge  { width: 54px; height: 54px; }
+  #compass    { font-size: 12px; }
+  #cmp-arrow  { font-size: 16px; }
 
-  /* ── Shortcuts-Kachel: Label-Reihe kompakter, Buttons kleiner ── */
+  /* ── Shortcuts: einzeilig über die volle 2-Spalten-Breite ── */
   .sc-lbl-row { margin-bottom: 2px; }
-  .sc-btn     { min-height: 34px; font-size: 18px; }
-  .sc-name    { font-size: 8px; }
-  .sc-grid    { gap: 5px; }
+  .sc-btn     { min-height: 32px; font-size: 17px; }
+  .sc-name    { font-size: 7px; }
+  .sc-grid    { gap: 5px; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); }
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -772,7 +778,8 @@ body {
 }
 #ph-112 { background: var(--red);    color: #fff; }
 #ph-110 { background: #0077CC;      color: #fff; }
-#ph-app { background: var(--tile-act); color: var(--t1); flex: 1; }
+#ph-app          { background: var(--tile-act); color: var(--t1); flex: 1; }
+#ph-contacts-btn { background: var(--tile-act); color: var(--t1); flex: 1; }
 
 #ph-active { display: none; flex-direction: column; align-items: center; gap: 6px; flex: 1; justify-content: center; }
 #ph-active.show { display: flex; }
