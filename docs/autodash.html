@@ -43,6 +43,43 @@
 }
 
 /* ════════════════════════════════════════════════════════════════
+   LIGHT THEME — iOS CarPlay Hell-Modus
+   Wird per JS via data-theme="light" auf <html> aktiviert.
+   Accent/green/red/orange bleiben unverändert.
+════════════════════════════════════════════════════════════════ */
+html[data-theme="light"] {
+  --bg:       #F2F2F7;
+  --tile:     rgba(255,255,255,0.82);
+  --tile-act: rgba(232,232,238,0.92);
+  --border:     rgba(0,0,0,0.07);
+  --border-act: rgba(0,0,0,0.15);
+  --t1: #1C1C1E;
+  --t2: #6C6C70;
+  --t3: #AEAEB2;
+}
+
+html[data-theme="light"] body {
+  background:
+    radial-gradient(ellipse at 25% 25%, rgba(0,122,255,0.08) 0%, transparent 55%),
+    radial-gradient(ellipse at 75% 70%, rgba(52,199,89,0.05) 0%, transparent 55%),
+    var(--bg);
+}
+
+html[data-theme="light"] #status-bar {
+  background: rgba(242,242,247,0.90);
+}
+
+/* Im Hellen einen dezenten Drop-Shadow statt nur Glasblur */
+html[data-theme="light"] .tile {
+  box-shadow: 0 1px 6px rgba(0,0,0,0.09), inset 0 0 0 1px rgba(0,0,0,0.05);
+}
+
+/* Speed-Gauge: SVG-Hintergrundring + Text im Hellmodus anpassen */
+html[data-theme="light"] #spd-gauge circle:not(#spd-arc) {
+  stroke: rgba(0,0,0,0.12);   /* war rgba(255,255,255,0.10) → unsichtbar */
+}
+
+/* ════════════════════════════════════════════════════════════════
    RESET & ROOT
 ════════════════════════════════════════════════════════════════ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1108,6 +1145,26 @@ body {
 }
 #sb-widgets-btn:active { background: rgba(255,255,255,0.14); color: var(--t1); }
 
+/* Status-Bar Theme-Toggle-Button */
+#sb-theme-btn {
+  margin-left: 4px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--t2);
+  font-size: 13px;
+  width: 26px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+}
+#sb-theme-btn:active { background: rgba(255,255,255,0.14); color: var(--t1); }
+html[data-theme="light"] #sb-theme-btn,
+html[data-theme="light"] #sb-widgets-btn {
+  background: rgba(0,0,0,0.06);
+  border-color: var(--border);
+  color: var(--t2);
+}
+
 /* ════════════════════════════════════════════════════════════════
    UTILITY
 ════════════════════════════════════════════════════════════════ */
@@ -1131,6 +1188,7 @@ body {
     <div class="sb-item hidden" id="sb-call">
       <span style="color:var(--green)" class="pulse">● Anruf aktiv</span>
     </div>
+    <button id="sb-theme-btn" title="Darstellung: System">🌗</button>
     <button id="sb-widgets-btn" title="Widgets">⊞</button>
     <span id="sb-time"></span>
   </div>
@@ -1469,6 +1527,56 @@ const G   = id => document.getElementById(id);
 const pad2 = n => String(Math.floor(n)).padStart(2, '0');
 
 /* ═══════════════════════════════════════════════════════════════
+   THEME SERVICE — Hell / Dunkel / System-Autofolge
+   Zyklus: 🌗 auto → ☀️ hell → 🌙 dunkel → 🌗 auto …
+   Persistenz via localStorage 'autodash_theme_v1'
+═══════════════════════════════════════════════════════════════ */
+(function ThemeSvc() {
+  const LS_KEY = 'autodash_theme_v1';
+  const META   = document.querySelector('meta[name="theme-color"]');
+  const mq     = window.matchMedia('(prefers-color-scheme: light)');
+  let   pref   = 'auto'; // "auto" | "light" | "dark"
+
+  const ICONS  = { auto: '🌗', light: '☀️', dark: '🌙' };
+  const TITLES = { auto: 'Darstellung: System', light: 'Darstellung: Hell', dark: 'Darstellung: Dunkel' };
+  const ORDER  = ['auto', 'light', 'dark'];
+
+  /** Effektives Theme abhängig von Präferenz + System */
+  function effective() {
+    return pref === 'auto' ? (mq.matches ? 'light' : 'dark') : pref;
+  }
+
+  function applyTheme() {
+    const t = effective();
+    document.documentElement.setAttribute('data-theme', t);
+    if (META) META.content = (t === 'light') ? '#F2F2F7' : '#1C1C1E';
+    const btn = G('sb-theme-btn');
+    if (btn) { btn.textContent = ICONS[pref]; btn.title = TITLES[pref]; }
+  }
+
+  function cycle() {
+    pref = ORDER[(ORDER.indexOf(pref) + 1) % ORDER.length];
+    try { localStorage.setItem(LS_KEY, pref); } catch(_) {}
+    applyTheme();
+  }
+
+  // Gespeicherte Präferenz laden
+  try { const s = localStorage.getItem(LS_KEY); if (s) pref = s; } catch(_) {}
+
+  // Sofort anwenden (vor erstem Paint)
+  applyTheme();
+
+  // System-Wechsel (nur relevant wenn pref === 'auto')
+  mq.addEventListener('change', () => { if (pref === 'auto') applyTheme(); });
+
+  // Button-Klick
+  window.addEventListener('DOMContentLoaded', () => {
+    const btn = G('sb-theme-btn');
+    if (btn) btn.addEventListener('click', cycle);
+  });
+})();
+
+/* ═══════════════════════════════════════════════════════════════
    CLOCK SERVICE
 ═══════════════════════════════════════════════════════════════ */
 (function ClockService() {
@@ -1596,8 +1704,11 @@ const GaugeSvc = (function() {
 
     arc.setAttribute('stroke-dasharray', `${len.toFixed(2)} ${CIRC}`);
     arc.setAttribute('stroke', color);
-    valText.textContent        = String(Math.round(v));
-    valText.setAttribute('fill', v > 130 ? '#FF3B30' : v > 100 ? '#FF9F0A' : 'white');
+    valText.textContent = String(Math.round(v));
+    // Warnfarben bleiben in beiden Modi; Normalfarbe passt sich ans Theme an
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    valText.setAttribute('fill',
+      v > 130 ? '#FF3B30' : v > 100 ? '#FF9F0A' : (isLight ? '#1C1C1E' : '#FFFFFF'));
   }
 
   update(0);
