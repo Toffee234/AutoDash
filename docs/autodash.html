@@ -166,7 +166,7 @@ body {
   gap: var(--gap);
   height: 100%;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: auto 2.4fr 1.8fr minmax(160px, 1fr);
+  grid-template-rows: auto 2.4fr 2.2fr minmax(0, 0.75fr);
 }
 
 /* Portrait placement */
@@ -177,6 +177,12 @@ body {
 #tile-phone { grid-column: 2;   grid-row: 3; }
 #tile-speed     { grid-column: 1;   grid-row: 4; }
 #tile-shortcuts { grid-column: 2;   grid-row: 4; }
+
+/* ── Portrait Speed/Kompass-Kachel kompakter (Row 4 ist klein) ── */
+#spd-gauge      { width: 62px; height: 62px; }
+#spd-gauge-val  { font-size: 16px; }
+#compass        { font-size: 11px; }
+#cmp-arrow      { font-size: 14px; }
 
 /* Landscape — 3-Spalten-Layout für volle horizontale Nutzung
    Viewport iPhone 17 Pro landscape: 852 × 393 pt (minus Statusbar ~26px → ~367px Höhe)
@@ -234,11 +240,13 @@ body {
   #mu-play    { font-size: 22px; }
   #mu-info    { gap: 6px; }
 
-  /* ── Telefon-Kachel: Icon + Hint verbergen, Buttons kompakter ── */
-  #ph-icon  { display: none; }
-  #ph-hint  { display: none; }
-  #ph-idle  { gap: 4px; }
-  .emrg-btn { min-height: 24px; padding: 3px 4px; font-size: 10px; }
+  /* ── Telefon-Kachel: nur Notruf-Buttons in Landscape ── */
+  #ph-icon         { display: none; }
+  #ph-hint         { display: none; }
+  #ph-app          { display: none !important; }   /* kein Platz in ~92px-Zeile */
+  #ph-contacts-btn { display: none; }
+  #ph-idle         { gap: 6px; justify-content: center; }
+  .emrg-btn        { min-height: 30px; padding: 4px 4px; font-size: 11px; font-weight: 700; }
 
   /* ── Speed-Kachel: Gauge kleiner ── */
   #spd-gauge  { width: 54px; height: 54px; }
