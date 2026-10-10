@@ -197,13 +197,13 @@ body {
   #tile-map       { grid-column: 1;   grid-row: 1/5; }
   /* Uhr + Wetter: Row 1, beide rechten Spalten */
   .cw-row         { grid-column: 2/4; grid-row: 1; }
-  /* Musik: Row 2+3 Mitte (2 Zeilen ≈ 184px — genug für Playback-UI) */
+  /* Musik: Row 2+3 Mitte (2 Zeilen ≈ 184px) */
   #tile-music     { grid-column: 2;   grid-row: 2/4; }
-  /* Telefon + Speed je 1 Zeile ganz rechts */
-  #tile-phone     { grid-column: 3;   grid-row: 2; }
-  #tile-speed     { grid-column: 3;   grid-row: 3; }
-  /* Shortcuts: Row 4, volle Breite der rechten 2 Spalten */
-  #tile-shortcuts { grid-column: 2/4; grid-row: 4; }
+  /* Telefon: Row 2+3 rechts (ebenfalls 2 Zeilen ≈ 184px — alle Buttons sichtbar) */
+  #tile-phone     { grid-column: 3;   grid-row: 2/4; }
+  /* Speed + Shortcuts: Row 4, je 1 Spalte */
+  #tile-speed     { grid-column: 2;   grid-row: 4; }
+  #tile-shortcuts { grid-column: 3;   grid-row: 4; }
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -240,24 +240,23 @@ body {
   #mu-play    { font-size: 22px; }
   #mu-info    { gap: 6px; }
 
-  /* ── Telefon-Kachel: nur Notruf-Buttons in Landscape ── */
-  #ph-icon         { display: none; }
-  #ph-hint         { display: none; }
-  #ph-app          { display: none !important; }   /* kein Platz in ~92px-Zeile */
-  #ph-contacts-btn { display: none; }
-  #ph-idle         { gap: 6px; justify-content: center; }
-  .emrg-btn        { min-height: 30px; padding: 4px 4px; font-size: 11px; font-weight: 700; }
+  /* ── Telefon-Kachel: Icon + Hint verbergen, Buttons kompakter
+     (Kontakte + Telefon öffnen bleiben — Kachel scrollt bei Bedarf) ── */
+  #ph-icon  { display: none; }
+  #ph-hint  { display: none; }
+  #ph-idle  { gap: 5px; justify-content: center; }
+  .emrg-btn { min-height: 28px; padding: 4px 4px; font-size: 11px; font-weight: 700; }
 
   /* ── Speed-Kachel: Gauge kleiner ── */
   #spd-gauge  { width: 54px; height: 54px; }
   #compass    { font-size: 12px; }
   #cmp-arrow  { font-size: 16px; }
 
-  /* ── Shortcuts: einzeilig über die volle 2-Spalten-Breite ── */
+  /* ── Shortcuts: Row 4, 1 Spalte ── */
   .sc-lbl-row { margin-bottom: 2px; }
-  .sc-btn     { min-height: 32px; font-size: 17px; }
+  .sc-btn     { min-height: 28px; font-size: 15px; }
   .sc-name    { font-size: 7px; }
-  .sc-grid    { gap: 5px; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); }
+  .sc-grid    { gap: 4px; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); }
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -281,7 +280,14 @@ body {
   flex-direction: column;
   position: relative;
   z-index: 1;
+  /* Inhalt scrollbar wenn Kachel zu klein — kein Clip */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
+/* Scrollbar verstecken (scrollbar bleibt funktional per Touch) */
+.tile-inner::-webkit-scrollbar { display: none; }
+.tile-inner { scrollbar-width: none; }
 
 .tile-lbl {
   font-size: 10px;
@@ -296,7 +302,8 @@ body {
 /* ════════════════════════════════════════════════════════════════
    CLOCK TILE
 ════════════════════════════════════════════════════════════════ */
-#tile-clock .tile-inner { justify-content: center; align-items: flex-start; }
+#tile-clock .tile-inner   { justify-content: center; align-items: flex-start; overflow-y: hidden; }
+#tile-map   .tile-inner   { overflow: hidden; }          /* Karte nie scrollen */
 
 #clk-wrap { display: flex; align-items: baseline; gap: 2px; }
 
@@ -839,6 +846,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 6px 16px;
+  overflow-y: hidden;  /* Row-Layout — kein Y-Scroll */
 }
 
 /* Gauge-Wrapper */
