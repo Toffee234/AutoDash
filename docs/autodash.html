@@ -129,7 +129,7 @@ body {
   gap: var(--gap);
   height: 100%;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: auto 2.4fr 1.8fr 1fr;
+  grid-template-rows: auto 2.4fr 1.8fr minmax(160px, 1fr);
 }
 
 /* Portrait placement */
@@ -384,10 +384,10 @@ body {
 #map-fs-search-btn { background: var(--accent); color: #fff; }
 #map-fs-close-btn  { background: rgba(255,255,255,0.12); color: var(--t1); }
 
-/* Suggestions */
+/* Suggestions — position: fixed so backdrop-filter on parent never clips it */
 #map-fs-suggestions {
-  position: absolute;
-  top: calc(100% + 2px);
+  position: fixed;
+  top: 60px; /* overridden by JS to header.getBoundingClientRect().bottom + 2 */
   left: 10px; right: 10px;
   background: var(--tile-act);
   backdrop-filter: blur(20px);
@@ -975,8 +975,10 @@ body {
     <input type="text" id="map-fs-input" placeholder="Adresse / Ziel eingeben…" autocomplete="off" autocorrect="off" />
     <button class="fs-btn" id="map-fs-search-btn">🔍 Suchen</button>
     <button class="fs-btn" id="map-fs-close-btn">✕</button>
-    <div id="map-fs-suggestions"></div>
   </div>
+  <!-- Suggestions OUTSIDE #map-fs-header: backdrop-filter creates a stacking context
+       that clips position:absolute children on iOS Safari → use position:fixed instead -->
+  <div id="map-fs-suggestions"></div>
   <!-- Karte -->
   <div id="map-fs-map">
     <!-- Turn-by-Turn Navigations-Banner — über der Karte -->
@@ -1427,8 +1429,16 @@ const MapSvc = (function() {
     return d.routes[0];
   }
 
+  // ── Suggestions-Positionierung (position:fixed, dynamisch) ───
+  function positionSuggestions() {
+    const hdr = G('map-fs-header');
+    if (!hdr) return;
+    G('map-fs-suggestions').style.top = (hdr.getBoundingClientRect().bottom + 2) + 'px';
+  }
+
   // ── Suggestions-Liste ────────────────────────────────────────
   function showSuggestions(results) {
+    positionSuggestions();
     const box = G('map-fs-suggestions');
     box.innerHTML = '';
     if (!results.length) { box.classList.remove('show'); return; }
@@ -1447,6 +1457,7 @@ const MapSvc = (function() {
   function hideSuggestions() { G('map-fs-suggestions').classList.remove('show'); }
 
   function showSearchMsg(msg) {
+    positionSuggestions();
     const box = G('map-fs-suggestions');
     box.innerHTML = `<div class="sug-item"><div class="sug-name" style="text-align:center;padding:4px 0;color:var(--t2)">${msg}</div></div>`;
     box.classList.add('show');
@@ -1661,26 +1672,43 @@ const MapSvc = (function() {
     }
   }
 
+  // Visuelles Feedback wenn kein Track geladen — zeigt Ladelabel in Akzentfarbe
+  function noPlaylistHint() {
+    const lbl = G('mu-load-lbl');
+    const orig = lbl.textContent;
+    lbl.textContent = '⬆ Zuerst Datei laden';
+    lbl.style.color = 'var(--accent)';
+    lbl.style.borderColor = 'var(--accent)';
+    setTimeout(() => {
+      lbl.style.color = '';
+      lbl.style.borderColor = '';
+      lbl.textContent = orig;
+    }, 2000);
+  }
+
   playBtn.addEventListener('click', () => {
-    if (!playlist.length) return;
+    if (!playlist.length) { noPlaylistHint(); return; }
     if (audio.paused || audio.ended) {
       audio.play().then(updateUI).catch(() => updateUI());
     } else {
       audio.pause();
+      updateUI();
     }
   });
 
   G('mu-next').addEventListener('click', () => {
-    if (!playlist.length) return;
+    if (!playlist.length) { noPlaylistHint(); return; }
     cur = (cur + 1) % playlist.length;
     loadTrack(cur);
+    audio.play().catch(() => {});
   });
 
   G('mu-prev').addEventListener('click', () => {
-    if (!playlist.length) return;
+    if (!playlist.length) { noPlaylistHint(); return; }
     if (audio.currentTime >= 3) { audio.currentTime = 0; return; }
     cur = (cur - 1 + playlist.length) % playlist.length;
     loadTrack(cur);
+    audio.play().catch(() => {});
   });
 
   // Coverbilder aus Bild-Dateien extrahieren (wenn gemeinsam mit Audio ausgewählt)
@@ -1720,6 +1748,8 @@ const MapSvc = (function() {
 
     cur = 0;
     loadTrack(cur);
+    // Auto-Play: File-Input-Change gilt als User-Geste → audio.play() erlaubt
+    audio.play().catch(() => {}); // iOS: schlägt still fehl wenn Geste abgelaufen
     G('mu-load-lbl').textContent = `${audioFiles.length} Datei${audioFiles.length>1?'en':''} geladen`;
   });
 
