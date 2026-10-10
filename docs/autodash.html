@@ -825,6 +825,348 @@ body {
 .leaflet-control-zoom { display: none; }
 
 /* ════════════════════════════════════════════════════════════════
+   CONTACTS OVERLAY — Anrufliste + Schnellwahl
+════════════════════════════════════════════════════════════════ */
+#contacts-fs {
+  position: fixed; inset: 0; z-index: 9000;
+  background: var(--bg);
+  display: none; flex-direction: column;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+#contacts-fs.open { display: flex; }
+#contacts-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px;
+  background: var(--tile);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+#contacts-title { font-size: 16px; font-weight: 700; flex: 1; }
+#contacts-close-btn {
+  background: rgba(255,255,255,0.12); color: var(--t1);
+  border-radius: 10px; font-size: 13px; font-weight: 600;
+  padding: 8px 14px; min-height: 36px;
+}
+#contacts-picker-btn {
+  background: var(--accent); color: #fff;
+  border-radius: 10px; font-size: 13px; font-weight: 600;
+  padding: 8px 14px; min-height: 36px;
+}
+.contacts-tabs {
+  display: flex; padding: 0 14px;
+  background: var(--tile); border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.contacts-tab {
+  flex: 1; padding: 10px 0; font-size: 13px; font-weight: 600;
+  color: var(--t2); background: none;
+  border-bottom: 2px solid transparent; border-radius: 0;
+  transition: color 0.15s, border-color 0.15s;
+}
+.contacts-tab.active { color: var(--accent); border-color: var(--accent); }
+#contacts-body { flex: 1; overflow-y: auto; padding: 10px 14px; }
+.contact-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px;
+  background: var(--tile); border: 1px solid var(--border);
+  border-radius: 12px; margin-bottom: 8px;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.12s;
+}
+.contact-item:active { background: var(--tile-act); }
+.contact-avatar {
+  width: 42px; height: 42px; border-radius: 50%;
+  background: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 700; color: white; flex-shrink: 0;
+  text-transform: uppercase;
+}
+.contact-info { flex: 1; min-width: 0; }
+.contact-name   { font-size: 14px; font-weight: 600; }
+.contact-number { font-size: 12px; color: var(--t2); margin-top: 2px; }
+.contact-call-btn {
+  background: var(--green); border-radius: 50%;
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0; cursor: pointer;
+}
+.contact-del-btn {
+  background: rgba(255,59,48,0.15); color: var(--red);
+  border-radius: 8px; width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; cursor: pointer; flex-shrink: 0;
+}
+.contact-add-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 14px;
+  background: rgba(0,122,255,0.10);
+  border: 1.5px dashed rgba(0,122,255,0.45);
+  border-radius: 12px; color: var(--accent);
+  font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 8px;
+}
+.recent-call-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px;
+  background: var(--tile); border: 1px solid var(--border);
+  border-radius: 12px; margin-bottom: 8px;
+}
+.recent-icon { font-size: 18px; width: 30px; text-align: center; }
+.recent-info { flex: 1; min-width: 0; }
+.recent-name { font-size: 13px; font-weight: 600; }
+.recent-meta { font-size: 11px; color: var(--t2); margin-top: 2px; }
+.recent-cb-btn {
+  background: var(--green); border-radius: 50%;
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; flex-shrink: 0; cursor: pointer;
+}
+.contacts-empty { text-align: center; color: var(--t3); padding: 30px 0; font-size: 14px; }
+/* Kontakt-Modal */
+#contact-modal {
+  position: fixed; inset: 0; z-index: 9500;
+  background: rgba(0,0,0,0.72);
+  display: none; align-items: center; justify-content: center; padding: 20px;
+}
+#contact-modal.open { display: flex; }
+.contact-modal-box {
+  background: #2C2C2E; border: 1px solid var(--border-act);
+  border-radius: 18px; padding: 20px;
+  width: 100%; max-width: 320px;
+  display: flex; flex-direction: column; gap: 13px;
+}
+.cm-title { font-size: 17px; font-weight: 700; text-align: center; }
+.cm-field { display: flex; flex-direction: column; gap: 5px; }
+.cm-field label { font-size: 12px; color: var(--t2); font-weight: 500; }
+.cm-field input {
+  background: rgba(255,255,255,0.09);
+  border: 1px solid var(--border); border-radius: 10px;
+  color: var(--t1); font-size: 15px; font-family: var(--font);
+  padding: 9px 12px; outline: none; -webkit-appearance: none; width: 100%;
+}
+.cm-field input:focus { border-color: var(--accent); }
+.cm-btns { display: flex; gap: 8px; }
+.cm-btns button { flex: 1; padding: 11px; border-radius: 12px; font-size: 14px; font-weight: 600; font-family: var(--font); }
+.cm-save   { background: var(--accent); color: #fff; }
+.cm-cancel { background: rgba(255,255,255,0.10); color: var(--t1); }
+
+/* ════════════════════════════════════════════════════════════════
+   WIDGETS OVERLAY — Kalender + Tankstellen
+════════════════════════════════════════════════════════════════ */
+#widgets-fs {
+  position: fixed; inset: 0; z-index: 9000;
+  background: var(--bg);
+  display: none; flex-direction: column;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+#widgets-fs.open { display: flex; }
+#widgets-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px;
+  background: var(--tile);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+#widgets-title { font-size: 16px; font-weight: 700; flex: 1; }
+#widgets-close-btn {
+  background: rgba(255,255,255,0.12); color: var(--t1);
+  border-radius: 10px; font-size: 13px; font-weight: 600;
+  padding: 8px 14px; min-height: 36px;
+}
+.widgets-tabs {
+  display: flex; padding: 0 14px;
+  background: var(--tile); border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.widgets-tab {
+  flex: 1; padding: 10px 0; font-size: 13px; font-weight: 600;
+  color: var(--t2); background: none;
+  border-bottom: 2px solid transparent; border-radius: 0;
+  transition: color 0.15s, border-color 0.15s;
+}
+.widgets-tab.active { color: var(--accent); border-color: var(--accent); }
+#widgets-body { flex: 1; overflow-y: auto; padding: 14px; }
+/* Kalender */
+.cal-next-card {
+  background: var(--tile); border: 1px solid var(--accent);
+  border-radius: 16px; padding: 18px; margin-bottom: 12px;
+}
+.cal-card-header {
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--accent); margin-bottom: 10px;
+}
+.cal-event-title  { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+.cal-event-time   { font-size: 13px; color: var(--t2); }
+.cal-countdown    {
+  font-size: 24px; font-weight: 800; color: var(--accent);
+  margin-top: 10px; font-variant-numeric: tabular-nums;
+}
+.cal-no-event { color: var(--t3); font-size: 14px; text-align: center; padding: 20px 0; }
+.cal-list-title {
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--t3); margin: 14px 0 8px;
+}
+.cal-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  background: var(--tile); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px; margin-bottom: 8px;
+}
+.cal-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); margin-top: 4px; flex-shrink: 0; }
+.cal-item-info  { flex: 1; min-width: 0; }
+.cal-item-name  { font-size: 14px; font-weight: 600; }
+.cal-item-time  { font-size: 12px; color: var(--t2); margin-top: 2px; }
+.cal-item-del   { background: none; font-size: 16px; color: var(--t3); padding: 0 4px; }
+.cal-item-del:active { color: var(--red); }
+.cal-add-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 14px;
+  background: rgba(0,122,255,0.10);
+  border: 1.5px dashed rgba(0,122,255,0.45);
+  border-radius: 12px; color: var(--accent);
+  font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 6px;
+}
+/* Termin-Modal */
+#cal-modal {
+  position: fixed; inset: 0; z-index: 9500;
+  background: rgba(0,0,0,0.72);
+  display: none; align-items: center; justify-content: center; padding: 20px;
+}
+#cal-modal.open { display: flex; }
+.cal-modal-box {
+  background: #2C2C2E; border: 1px solid var(--border-act);
+  border-radius: 18px; padding: 20px;
+  width: 100%; max-width: 320px;
+  display: flex; flex-direction: column; gap: 13px;
+}
+.cal-modal-title { font-size: 17px; font-weight: 700; text-align: center; }
+.cal-field { display: flex; flex-direction: column; gap: 5px; }
+.cal-field label { font-size: 12px; color: var(--t2); font-weight: 500; }
+.cal-field input, .cal-field select {
+  background: rgba(255,255,255,0.09);
+  border: 1px solid var(--border); border-radius: 10px;
+  color: var(--t1); font-size: 15px; font-family: var(--font);
+  padding: 9px 12px; outline: none; -webkit-appearance: none; width: 100%;
+}
+.cal-field input:focus { border-color: var(--accent); }
+.cal-modal-btns { display: flex; gap: 8px; }
+.cal-modal-btns button { flex: 1; padding: 11px; border-radius: 12px; font-size: 14px; font-weight: 600; font-family: var(--font); }
+.cal-save-btn   { background: var(--accent); color: #fff; }
+.cal-cancel-btn { background: rgba(255,255,255,0.10); color: var(--t1); }
+/* Tankstellen */
+.gas-item {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--tile); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px; margin-bottom: 8px;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.12s; cursor: pointer;
+}
+.gas-item:active { background: var(--tile-act); }
+.gas-icon {
+  font-size: 22px; width: 40px; height: 40px;
+  background: rgba(255,159,10,0.15); border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.gas-info  { flex: 1; min-width: 0; }
+.gas-name  { font-size: 14px; font-weight: 600; }
+.gas-dist  { font-size: 12px; color: var(--t2); margin-top: 2px; }
+.gas-nav-btn {
+  background: var(--accent); border-radius: 10px;
+  padding: 8px 12px; font-size: 12px; font-weight: 700;
+  color: #fff; flex-shrink: 0;
+}
+.gas-loading, .gas-error, .gas-empty {
+  text-align: center; padding: 30px 0; color: var(--t2); font-size: 14px;
+}
+#gas-refresh-btn {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  width: 100%; padding: 12px;
+  background: rgba(255,255,255,0.07); border: 1px solid var(--border);
+  border-radius: 12px; color: var(--t2); font-size: 13px; font-weight: 600;
+  cursor: pointer; margin-bottom: 12px;
+}
+#gas-refresh-btn:active { background: rgba(255,255,255,0.12); }
+
+/* ════════════════════════════════════════════════════════════════
+   SPOTIFY — in der Musik-Kachel + Setup-Modal
+════════════════════════════════════════════════════════════════ */
+#mu-spotify-row {
+  display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+}
+#mu-spotify-btn {
+  flex: 1; padding: 5px 8px;
+  background: #1DB954; color: white;
+  border-radius: 8px; font-size: 10px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  transition: opacity 0.15s; min-height: 28px;
+}
+#mu-spotify-btn:active  { opacity: 0.8; }
+#mu-spotify-btn.connected { background: rgba(29,185,84,0.20); color: #1DB954; border: 1px solid #1DB954; }
+#mu-spotify-btn.error     { background: rgba(255,59,48,0.15); color: var(--red); border: 1px solid var(--red); }
+#mu-spotify-disconnect {
+  background: rgba(255,255,255,0.10); color: var(--t3);
+  border-radius: 8px; font-size: 10px; font-weight: 600;
+  padding: 5px 8px; min-height: 28px; display: none;
+  align-items: center; justify-content: center;
+}
+#mu-spotify-disconnect.vis { display: flex; }
+/* Spotify Setup Modal */
+#mu-spotify-setup {
+  position: fixed; inset: 0; z-index: 9800;
+  background: rgba(0,0,0,0.88);
+  display: none; align-items: center; justify-content: center; padding: 20px;
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+}
+#mu-spotify-setup.open { display: flex; }
+.sp-setup-box {
+  background: #1C1C1E; border: 1px solid rgba(29,185,84,0.6);
+  border-radius: 20px; padding: 24px;
+  width: 100%; max-width: 340px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.sp-logo  { font-size: 36px; text-align: center; }
+.sp-title { font-size: 18px; font-weight: 700; text-align: center; }
+.sp-desc  { font-size: 12px; color: var(--t2); line-height: 1.6; }
+.sp-desc a { color: #1DB954; text-decoration: none; }
+.sp-step  {
+  background: rgba(29,185,84,0.08); border: 1px solid rgba(29,185,84,0.25);
+  border-radius: 10px; padding: 10px 12px; font-size: 12px; color: var(--t2); line-height: 1.6;
+}
+.sp-step strong { color: var(--t1); }
+.sp-field { display: flex; flex-direction: column; gap: 5px; }
+.sp-field label { font-size: 12px; color: var(--t2); font-weight: 500; }
+.sp-field input {
+  background: rgba(255,255,255,0.09);
+  border: 1px solid var(--border); border-radius: 10px;
+  color: var(--t1); font-size: 14px; font-family: var(--font);
+  padding: 9px 12px; outline: none; -webkit-appearance: none; width: 100%;
+}
+.sp-field input:focus { border-color: #1DB954; }
+.sp-connect-btn {
+  width: 100%; padding: 14px;
+  background: #1DB954; color: white;
+  border-radius: 14px; font-size: 15px; font-weight: 700; font-family: var(--font);
+}
+.sp-cancel-btn {
+  width: 100%; padding: 10px;
+  background: none; color: var(--t2); font-size: 13px; font-family: var(--font);
+}
+
+/* Status-Bar Widget-Button */
+#sb-widgets-btn {
+  margin-left: 6px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--t2);
+  font-size: 14px;
+  width: 26px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+}
+#sb-widgets-btn:active { background: rgba(255,255,255,0.14); color: var(--t1); }
+
+/* ════════════════════════════════════════════════════════════════
    UTILITY
 ════════════════════════════════════════════════════════════════ */
 .hidden { display: none !important; }
@@ -847,6 +1189,7 @@ body {
     <div class="sb-item hidden" id="sb-call">
       <span style="color:var(--green)" class="pulse">● Anruf aktiv</span>
     </div>
+    <button id="sb-widgets-btn" title="Widgets">⊞</button>
     <span id="sb-time"></span>
   </div>
 
@@ -917,6 +1260,11 @@ body {
             <label id="mu-load-lbl" for="mu-file">📁 Audiodatei laden</label>
             <input type="file" id="mu-file" accept="audio/*" />
           </div>
+          <!-- Spotify-Zeile -->
+          <div id="mu-spotify-row">
+            <button id="mu-spotify-btn">🎧 Spotify</button>
+            <button id="mu-spotify-disconnect" title="Spotify trennen">⏏</button>
+          </div>
         </div>
       </div>
 
@@ -932,6 +1280,7 @@ body {
               <button class="emrg-btn" id="ph-110">🚓 110</button>
             </div>
             <button class="emrg-btn" id="ph-app" style="display:none">📱 Telefon öffnen</button>
+            <button class="emrg-btn" id="ph-contacts-btn">👤 Kontakte</button>
           </div>
           <div id="ph-active">
             <div id="ph-caller">Anruf</div>
@@ -1050,6 +1399,147 @@ body {
   <div id="map-fs-route">
     <div id="route-main"></div>
     <div id="route-sub"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CONTACTS FULLSCREEN OVERLAY
+═══════════════════════════════════════════════════════════ -->
+<div id="contacts-fs">
+  <div id="contacts-fs-header">
+    <input type="text" id="contacts-search" placeholder="Kontakt suchen…"
+           autocomplete="off" autocorrect="off" autocapitalize="off" />
+    <button class="fs-btn" id="contacts-add-btn">＋</button>
+    <button class="fs-btn" id="contacts-close-btn">✕</button>
+  </div>
+
+  <!-- Letzte Anrufe -->
+  <div id="recent-calls-section">
+    <div class="contacts-section-title">Letzte Anrufe</div>
+    <div id="recent-calls-list"></div>
+  </div>
+
+  <!-- Kontaktliste -->
+  <div class="contacts-section-title" id="contacts-list-title">Kontakte</div>
+  <div id="contacts-list"></div>
+</div>
+
+<!-- CONTACT DETAIL / EDIT MODAL -->
+<div id="contact-modal">
+  <div class="contact-modal-box">
+    <div class="cm-title" id="cm-title">Kontakt hinzufügen</div>
+    <div class="cm-field">
+      <label>Name</label>
+      <input type="text" id="cm-name" placeholder="Max Mustermann" maxlength="60" />
+    </div>
+    <div class="cm-field">
+      <label>Telefonnummer</label>
+      <input type="tel" id="cm-phone" placeholder="+49 151 1234 5678" inputmode="tel" />
+    </div>
+    <div class="cm-field">
+      <label>Emoji / Symbol</label>
+      <input type="text" id="cm-emoji" placeholder="👤" maxlength="4" />
+    </div>
+    <div class="cm-btns">
+      <button class="cm-cancel" id="cm-cancel-btn">Abbrechen</button>
+      <button class="cm-save"   id="cm-save-btn">Speichern</button>
+    </div>
+    <button class="cm-del" id="cm-del-btn">🗑 Löschen</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     WIDGETS FULLSCREEN OVERLAY
+═══════════════════════════════════════════════════════════ -->
+<div id="widgets-fs">
+  <div id="widgets-fs-header">
+    <span id="widgets-fs-title">Widgets</span>
+    <button class="fs-btn" id="widgets-close-btn">✕</button>
+  </div>
+
+  <!-- Kalender-Widget -->
+  <div class="widget-section">
+    <div class="widget-section-title">📅 Kalender</div>
+
+    <!-- Nächster Termin mit Countdown -->
+    <div class="cal-next-card" id="cal-next-card">
+      <div class="cal-no-event" id="cal-no-event">Keine Termine</div>
+      <div id="cal-next-event" style="display:none">
+        <div class="cal-card-header">Nächster Termin</div>
+        <div class="cal-event-title" id="cal-next-title"></div>
+        <div class="cal-event-time"  id="cal-next-time"></div>
+        <div class="cal-countdown"   id="cal-countdown"></div>
+      </div>
+    </div>
+
+    <!-- Terminliste -->
+    <div class="cal-list-title">Alle Termine</div>
+    <div id="cal-list"></div>
+    <button class="cal-add-btn" id="cal-add-btn">＋ Termin hinzufügen</button>
+  </div>
+
+  <!-- Tankstellen-Widget -->
+  <div class="widget-section">
+    <div class="widget-section-title">⛽ Tankstellen in der Nähe</div>
+    <div id="gas-list">
+      <div class="gas-loading" id="gas-loading"><div class="spin"></div> Lade…</div>
+      <div class="gas-error hidden"  id="gas-error">GPS nicht verfügbar</div>
+      <div class="gas-empty hidden"  id="gas-empty">Keine Tankstellen gefunden</div>
+    </div>
+    <button id="gas-refresh-btn">⟳ Aktualisieren</button>
+  </div>
+</div>
+
+<!-- CALENDAR EVENT MODAL -->
+<div id="cal-modal">
+  <div class="cal-modal-box">
+    <div class="cal-modal-title" id="cal-modal-title">Termin hinzufügen</div>
+    <div class="cal-field">
+      <label>Bezeichnung</label>
+      <input type="text" id="cal-inp-name" placeholder="Werkstatttermin" maxlength="60" />
+    </div>
+    <div class="cal-field">
+      <label>Datum & Uhrzeit</label>
+      <input type="datetime-local" id="cal-inp-dt" />
+    </div>
+    <div class="cal-field">
+      <label>Farbe</label>
+      <select id="cal-inp-color">
+        <option value="#007AFF">Blau</option>
+        <option value="#30D158">Grün</option>
+        <option value="#FF9F0A">Orange</option>
+        <option value="#FF3B30">Rot</option>
+        <option value="#BF5AF2">Lila</option>
+      </select>
+    </div>
+    <div class="cal-modal-btns">
+      <button class="cal-cancel-btn" id="cal-cancel-btn">Abbrechen</button>
+      <button class="cal-save-btn"   id="cal-save-btn">Speichern</button>
+    </div>
+    <button class="cal-del-btn" id="cal-del-btn">🗑 Löschen</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SPOTIFY SETUP MODAL
+═══════════════════════════════════════════════════════════ -->
+<div id="mu-spotify-setup">
+  <div class="sp-setup-box">
+    <div class="sp-setup-title">Spotify verbinden</div>
+    <p class="sp-setup-hint">
+      Erstelle eine App im <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">Spotify Developer Dashboard</a>
+      und trage deine <strong>Client ID</strong> ein. Als Redirect URI:
+      <code id="sp-redirect-uri"></code>
+    </p>
+    <div class="sp-setup-field">
+      <label>Client ID</label>
+      <input type="text" id="sp-client-id" placeholder="32-stellige Hex-ID" maxlength="40"
+             autocomplete="off" autocorrect="off" autocapitalize="none" />
+    </div>
+    <div class="sp-setup-btns">
+      <button class="sp-cancel-btn" id="sp-cancel-btn">Abbrechen</button>
+      <button class="sp-connect-btn" id="sp-connect-btn">Verbinden</button>
+    </div>
   </div>
 </div>
 
@@ -2006,6 +2496,866 @@ const MapSvc = (function() {
 
   load();
   render();
+})();
+
+
+/* ═══════════════════════════════════════════════════════════════
+   CONTACT SERVICE — Contact Picker API + localStorage fallback
+   Verwaltet Kontakte und letzte Anrufe; zeigt Fullscreen-Overlay.
+═══════════════════════════════════════════════════════════════ */
+(function ContactSvc() {
+  const LS_CONTACTS = 'autodash_contacts_v1';
+  const LS_RECENTS  = 'autodash_recents_v1';
+  const MAX_RECENTS = 20;
+
+  let contacts   = [];
+  let recents    = [];
+  let editingIdx = -1; // -1 = neuer Kontakt
+  let searchQ    = '';
+
+  // ── Persistenz ───────────────────────────────────────────────
+  function loadData() {
+    try { contacts = JSON.parse(localStorage.getItem(LS_CONTACTS) || '[]'); } catch(_) { contacts = []; }
+    try { recents  = JSON.parse(localStorage.getItem(LS_RECENTS)  || '[]'); } catch(_) { recents  = []; }
+  }
+  function saveContacts() {
+    try { localStorage.setItem(LS_CONTACTS, JSON.stringify(contacts)); } catch(_) {}
+  }
+  function saveRecents() {
+    try { localStorage.setItem(LS_RECENTS, JSON.stringify(recents)); } catch(_) {}
+  }
+
+  // ── Anruf starten + in Verlauf speichern ─────────────────────
+  function callNumber(number, name) {
+    if (!number) return;
+    // Anruf-Eintrag protokollieren
+    recents.unshift({ name: name || number, number, ts: Date.now() });
+    if (recents.length > MAX_RECENTS) recents.length = MAX_RECENTS;
+    saveRecents();
+    renderRecents();
+    // Telefon-App öffnen (funktioniert im Safari/PWA-Standalone)
+    window.location.href = 'tel:' + number.replace(/\s/g, '');
+  }
+
+  // ── Kontakt-Picker API versuchen ─────────────────────────────
+  async function tryContactPicker() {
+    if (!navigator.contacts || !navigator.contacts.select) return false;
+    try {
+      const picked = await navigator.contacts.select(['name', 'tel'], { multiple: true });
+      if (!picked || !picked.length) return true;
+      picked.forEach(p => {
+        const name   = (p.name   && p.name[0])   || 'Unbekannt';
+        const number = (p.tel    && p.tel[0])     || '';
+        if (!contacts.find(c => c.number === number && c.name === name)) {
+          contacts.push({ name, number, emoji: '👤' });
+        }
+      });
+      saveContacts();
+      renderContacts();
+      return true;
+    } catch(e) {
+      return false;
+    }
+  }
+
+  // ── Hilfsfunktionen ──────────────────────────────────────────
+  function fmtTs(ts) {
+    const d = new Date(ts);
+    const now = new Date();
+    const diffH = (now - d) / 3600000;
+    if (diffH < 24 && d.getDate() === now.getDate()) {
+      return d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    }
+    if (diffH < 48) return 'Gestern';
+    return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+  }
+  function initials(name) {
+    return (name || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  }
+  function avatarColor(name) {
+    const COLORS = ['#007AFF','#30D158','#FF9F0A','#FF3B30','#BF5AF2','#5AC8FA','#FF6961'];
+    let h = 0; for (const c of (name || '')) h = (h * 31 + c.charCodeAt(0)) & 0xFFFFFF;
+    return COLORS[h % COLORS.length];
+  }
+
+  // ── Rendering ─────────────────────────────────────────────────
+  function renderRecents() {
+    const el = G('recent-calls-list');
+    const sec = G('recent-calls-section');
+    if (!el || !sec) return;
+    if (!recents.length) { sec.style.display = 'none'; return; }
+    sec.style.display = '';
+    el.innerHTML = recents.slice(0, 5).map((r, i) => `
+      <div class="contact-item" onclick="ContactSvc_call('${r.number.replace(/'/g, "\\'")}','${r.name.replace(/'/g, "\\'")}')">
+        <div class="contact-avatar" style="background:${avatarColor(r.name)}">${r.emoji || initials(r.name)}</div>
+        <div class="contact-info">
+          <div class="contact-name">${r.name}</div>
+          <div class="contact-num">${r.number} · ${fmtTs(r.ts)}</div>
+        </div>
+        <button class="contact-call-btn" onclick="event.stopPropagation();ContactSvc_call('${r.number.replace(/'/g, "\\'")}','${r.name.replace(/'/g, "\\'")}')">📞</button>
+      </div>`).join('');
+  }
+
+  function renderContacts() {
+    const el = G('contacts-list');
+    if (!el) return;
+    const q = searchQ.toLowerCase();
+    const list = q
+      ? contacts.filter(c => c.name.toLowerCase().includes(q) || c.number.includes(q))
+      : contacts;
+
+    if (!list.length) {
+      el.innerHTML = `<div style="color:var(--t3);font-size:14px;text-align:center;padding:20px 0">
+        ${q ? 'Kein Ergebnis' : 'Noch keine Kontakte'}</div>`;
+      return;
+    }
+    // Alphabetisch sortieren
+    const sorted = [...list].sort((a, b) => a.name.localeCompare(b.name, 'de'));
+    el.innerHTML = sorted.map((c, i) => {
+      const idx = contacts.indexOf(c);
+      return `
+      <div class="contact-item" onclick="ContactSvc_edit(${idx})">
+        <div class="contact-avatar" style="background:${avatarColor(c.name)}">${c.emoji && c.emoji !== '👤' ? c.emoji : initials(c.name)}</div>
+        <div class="contact-info">
+          <div class="contact-name">${c.name}</div>
+          <div class="contact-num">${c.number}</div>
+        </div>
+        <button class="contact-call-btn" onclick="event.stopPropagation();ContactSvc_call('${c.number.replace(/'/g, "\\'")}','${c.name.replace(/'/g, "\\'")}')">📞</button>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Modal öffnen / schließen ──────────────────────────────────
+  function openModal(idx) {
+    editingIdx = idx;
+    const c = idx >= 0 ? contacts[idx] : null;
+    G('cm-title').textContent   = c ? 'Kontakt bearbeiten' : 'Kontakt hinzufügen';
+    G('cm-name').value          = c ? c.name   : '';
+    G('cm-phone').value         = c ? c.number : '';
+    G('cm-emoji').value         = c ? (c.emoji || '') : '';
+    G('cm-del-btn').style.display = c ? '' : 'none';
+    G('contact-modal').classList.add('open');
+    G('cm-name').focus();
+  }
+  function closeModal() {
+    G('contact-modal').classList.remove('open');
+  }
+
+  // ── Overlay öffnen / schließen ───────────────────────────────
+  function openOverlay() {
+    loadData();
+    searchQ = '';
+    G('contacts-search').value = '';
+    renderRecents();
+    renderContacts();
+    G('contacts-fs').classList.add('open');
+  }
+  function closeOverlay() {
+    G('contacts-fs').classList.remove('open');
+  }
+
+  // ── Globale Callbacks (inline onclick braucht globale Fns) ───
+  window.ContactSvc_call = callNumber;
+  window.ContactSvc_edit = openModal;
+
+  // ── Event-Listener ───────────────────────────────────────────
+  function init() {
+    loadData();
+
+    // Kontakte-Button im Phone-Tile
+    G('ph-contacts-btn').addEventListener('click', openOverlay);
+
+    // Overlay schließen
+    G('contacts-close-btn').addEventListener('click', closeOverlay);
+
+    // Suche
+    G('contacts-search').addEventListener('input', e => {
+      searchQ = e.target.value.trim();
+      renderContacts();
+    });
+
+    // Hinzufügen — erst Contact Picker versuchen, dann Modal
+    G('contacts-add-btn').addEventListener('click', async () => {
+      const picked = await tryContactPicker();
+      if (!picked) openModal(-1);
+    });
+
+    // Modal — Speichern
+    G('cm-save-btn').addEventListener('click', () => {
+      const name   = G('cm-name').value.trim();
+      const number = G('cm-phone').value.trim();
+      if (!name || !number) { G('cm-name').focus(); return; }
+      const entry = { name, number, emoji: G('cm-emoji').value.trim() || '👤' };
+      if (editingIdx >= 0) {
+        contacts[editingIdx] = entry;
+      } else {
+        contacts.push(entry);
+      }
+      saveContacts();
+      renderContacts();
+      closeModal();
+    });
+
+    // Modal — Abbrechen
+    G('cm-cancel-btn').addEventListener('click', closeModal);
+
+    // Modal — Löschen
+    G('cm-del-btn').addEventListener('click', () => {
+      if (editingIdx < 0) return;
+      contacts.splice(editingIdx, 1);
+      saveContacts();
+      renderContacts();
+      closeModal();
+    });
+
+    // Widget-Button in der Status-Bar öffnet Widgets-Panel
+    // (wird von WidgetSvc gehandhabt — hier nur Kontakte-Overlay)
+  }
+
+  init();
+})();
+
+
+/* ═══════════════════════════════════════════════════════════════
+   CALENDAR SERVICE — Termine mit Countdown im Widgets-Panel
+═══════════════════════════════════════════════════════════════ */
+(function CalendarSvc() {
+  const LS_KEY = 'autodash_calendar_v1';
+  let events   = [];
+  let editingId = null;
+  let countdownTimer = null;
+
+  // ── Persistenz ───────────────────────────────────────────────
+  function load() {
+    try { events = JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch(_) { events = []; }
+    // Vergangene Termine bereinigen (älter als 7 Tage)
+    const cutoff = Date.now() - 7 * 86400000;
+    events = events.filter(e => e.ts > cutoff);
+  }
+  function save() {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(events)); } catch(_) {}
+  }
+  function genId() { return Math.random().toString(36).slice(2, 10); }
+
+  // ── Countdown formatieren ─────────────────────────────────────
+  function fmtCountdown(ms) {
+    if (ms <= 0) return 'Jetzt';
+    const s   = Math.floor(ms / 1000);
+    const min = Math.floor(s / 60);
+    const h   = Math.floor(min / 60);
+    const d   = Math.floor(h / 24);
+    if (d > 0)  return `in ${d}d ${h % 24}h`;
+    if (h > 0)  return `in ${h}h ${min % 60}m`;
+    if (min > 0) return `in ${min}m`;
+    return `in ${s}s`;
+  }
+
+  // ── Nächsten Termin finden ────────────────────────────────────
+  function nextEvent() {
+    const now  = Date.now();
+    const fut  = events.filter(e => e.ts >= now - 60000).sort((a, b) => a.ts - b.ts);
+    return fut[0] || null;
+  }
+
+  // ── Rendering ─────────────────────────────────────────────────
+  function renderNext() {
+    const ev = nextEvent();
+    const card  = G('cal-next-card');
+    const noEv  = G('cal-no-event');
+    const nextEl = G('cal-next-event');
+    if (!card) return;
+
+    if (!ev) {
+      noEv && (noEv.style.display = '');
+      nextEl && (nextEl.style.display = 'none');
+      return;
+    }
+    noEv && (noEv.style.display = 'none');
+    nextEl && (nextEl.style.display = '');
+    G('cal-next-title').textContent = ev.name;
+    const dt = new Date(ev.ts);
+    G('cal-next-time').textContent = dt.toLocaleDateString('de-DE', {
+      weekday:'short', day:'2-digit', month:'2-digit', year:'numeric',
+      hour:'2-digit', minute:'2-digit'
+    });
+    // Countdown live
+    clearInterval(countdownTimer);
+    const countEl = G('cal-countdown');
+    const tick = () => {
+      if (!countEl) return;
+      countEl.textContent = fmtCountdown(ev.ts - Date.now());
+    };
+    tick();
+    countdownTimer = setInterval(tick, 1000);
+  }
+
+  function renderList() {
+    const el = G('cal-list');
+    if (!el) return;
+    const sorted = [...events].sort((a, b) => a.ts - b.ts);
+    if (!sorted.length) {
+      el.innerHTML = `<div style="color:var(--t3);font-size:13px;padding:8px 0">Keine Termine vorhanden</div>`;
+      return;
+    }
+    el.innerHTML = sorted.map(ev => {
+      const dt = new Date(ev.ts);
+      const lbl = dt.toLocaleDateString('de-DE', {
+        day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'
+      });
+      return `
+      <div class="cal-item">
+        <div class="cal-dot" style="background:${ev.color || 'var(--accent)'}"></div>
+        <div class="cal-item-info">
+          <div class="cal-item-name">${ev.name}</div>
+          <div class="cal-item-time">${lbl}</div>
+        </div>
+        <button class="cal-item-del" onclick="CalSvc_edit('${ev.id}')">✎</button>
+      </div>`;
+    }).join('');
+  }
+
+  function render() {
+    renderNext();
+    renderList();
+  }
+
+  // ── Modal ──────────────────────────────────────────────────────
+  function openModal(id) {
+    editingId = id || null;
+    const ev = id ? events.find(e => e.id === id) : null;
+    G('cal-modal-title').textContent = ev ? 'Termin bearbeiten' : 'Termin hinzufügen';
+    G('cal-inp-name').value  = ev ? ev.name  : '';
+    G('cal-inp-color').value = ev ? (ev.color || '#007AFF') : '#007AFF';
+    if (ev) {
+      // datetime-local braucht Format "YYYY-MM-DDTHH:mm"
+      const d = new Date(ev.ts);
+      const pad = n => String(n).padStart(2, '0');
+      G('cal-inp-dt').value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    } else {
+      // Default: 1 Stunde ab jetzt
+      const d = new Date(Date.now() + 3600000);
+      const pad = n => String(n).padStart(2, '0');
+      G('cal-inp-dt').value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+    G('cal-del-btn').style.display = ev ? '' : 'none';
+    G('cal-modal').classList.add('open');
+    G('cal-inp-name').focus();
+  }
+  function closeModal() { G('cal-modal').classList.remove('open'); }
+
+  window.CalSvc_edit = id => openModal(id);
+
+  // ── Init ─────────────────────────────────────────────────────
+  function init() {
+    load();
+
+    G('cal-add-btn').addEventListener('click', () => openModal(null));
+
+    G('cal-cancel-btn').addEventListener('click', closeModal);
+
+    G('cal-save-btn').addEventListener('click', () => {
+      const name = G('cal-inp-name').value.trim();
+      const dtVal = G('cal-inp-dt').value;
+      if (!name || !dtVal) { G('cal-inp-name').focus(); return; }
+      const ts = new Date(dtVal).getTime();
+      if (isNaN(ts)) return;
+      const entry = { id: editingId || genId(), name, ts, color: G('cal-inp-color').value };
+      if (editingId) {
+        const idx = events.findIndex(e => e.id === editingId);
+        if (idx >= 0) events[idx] = entry;
+      } else {
+        events.push(entry);
+      }
+      save();
+      render();
+      closeModal();
+    });
+
+    G('cal-del-btn').addEventListener('click', () => {
+      if (!editingId) return;
+      events = events.filter(e => e.id !== editingId);
+      save();
+      render();
+      closeModal();
+    });
+  }
+
+  // render() wird aufgerufen, wenn das Widgets-Panel geöffnet wird (von WidgetSvc)
+  window.CalSvc_render = render;
+  init();
+})();
+
+
+/* ═══════════════════════════════════════════════════════════════
+   GAS STATION SERVICE — Overpass API, nächste Tankstellen
+═══════════════════════════════════════════════════════════════ */
+(function GasStationSvc() {
+  const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
+  const RADIUS_M     = 5000; // 5 km Suchradius
+
+  let loading = false;
+
+  // ── Distanz berechnen (Haversine) ─────────────────────────────
+  function haversine(lat1, lon1, lat2, lon2) {
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 +
+              Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
+              Math.sin(dLon/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  // ── Distanz lesbar formatieren ────────────────────────────────
+  function fmtDist(m) {
+    if (m < 1000) return Math.round(m) + ' m';
+    return (m / 1000).toFixed(1) + ' km';
+  }
+
+  // ── Rendering ─────────────────────────────────────────────────
+  function renderLoading(on) {
+    G('gas-loading') && (G('gas-loading').classList.toggle('hidden', !on));
+  }
+  function renderError(msg) {
+    renderLoading(false);
+    const el = G('gas-error');
+    if (el) { el.textContent = msg; el.classList.remove('hidden'); }
+    G('gas-empty') && G('gas-empty').classList.add('hidden');
+  }
+  function renderStations(stations) {
+    renderLoading(false);
+    G('gas-error') && G('gas-error').classList.add('hidden');
+    const el = G('gas-list');
+    if (!el) return;
+    if (!stations.length) {
+      G('gas-empty') && G('gas-empty').classList.remove('hidden');
+      return;
+    }
+    G('gas-empty') && G('gas-empty').classList.add('hidden');
+
+    // Bestehende Karten entfernen (Spinner/Error bleiben im DOM, nur .gas-item entfernen)
+    el.querySelectorAll('.gas-item').forEach(n => n.remove());
+
+    stations.forEach(s => {
+      const card = document.createElement('div');
+      card.className = 'gas-item';
+      card.innerHTML = `
+        <div class="gas-icon">⛽</div>
+        <div class="gas-info">
+          <div class="gas-name">${s.name}</div>
+          <div class="gas-dist">${fmtDist(s.dist)}</div>
+        </div>
+        <button class="gas-nav-btn" title="Navigation starten">🗺</button>`;
+      // Navigation → MapSvc Route
+      card.querySelector('.gas-nav-btn').addEventListener('click', () => {
+        // MapSvc öffnet Fullscreen-Karte und navigiert zu Koordinate
+        if (window.MapSvc_routeTo) {
+          MapSvc_routeTo(s.lat, s.lon, s.name);
+        } else {
+          // Fallback: Apple Maps / Google Maps
+          window.open(`https://maps.apple.com/?daddr=${s.lat},${s.lon}&dirflg=d`, '_blank');
+        }
+      });
+      el.appendChild(card);
+    });
+  }
+
+  // ── Laden ─────────────────────────────────────────────────────
+  async function load() {
+    if (loading) return;
+    loading = true;
+    renderLoading(true);
+    G('gas-error') && G('gas-error').classList.add('hidden');
+    G('gas-empty') && G('gas-empty').classList.add('hidden');
+    G('gas-list') && G('gas-list').querySelectorAll('.gas-item').forEach(n => n.remove());
+
+    // GPS-Position holen
+    let pos;
+    try {
+      pos = await new Promise((res, rej) =>
+        navigator.geolocation.getCurrentPosition(res, rej, { timeout: 10000, maximumAge: 30000 }));
+    } catch(e) {
+      loading = false;
+      renderError('GPS nicht verfügbar');
+      return;
+    }
+
+    const { latitude: lat, longitude: lon } = pos.coords;
+
+    // Overpass-Query: amenity=fuel in Radius
+    const query = `[out:json][timeout:20];
+(
+  node["amenity"="fuel"](around:${RADIUS_M},${lat},${lon});
+  way["amenity"="fuel"](around:${RADIUS_M},${lat},${lon});
+);
+out center;`;
+
+    try {
+      const resp = await fetch(OVERPASS_URL, {
+        method: 'POST',
+        body: 'data=' + encodeURIComponent(query)
+      });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const data = await resp.json();
+
+      const stations = (data.elements || []).map(el => {
+        const sLat = el.lat ?? el.center?.lat ?? 0;
+        const sLon = el.lon ?? el.center?.lon ?? 0;
+        const name = el.tags?.name || el.tags?.brand || el.tags?.operator || 'Tankstelle';
+        const dist = haversine(lat, lon, sLat, sLon);
+        return { name, lat: sLat, lon: sLon, dist };
+      }).sort((a, b) => a.dist - b.dist).slice(0, 10);
+
+      loading = false;
+      renderStations(stations);
+    } catch(e) {
+      loading = false;
+      renderError('Fehler beim Laden (' + e.message + ')');
+    }
+  }
+
+  window.GasSvc_load = load;
+
+  function init() {
+    const refreshBtn = G('gas-refresh-btn');
+    if (refreshBtn) refreshBtn.addEventListener('click', load);
+  }
+  init();
+})();
+
+
+/* ═══════════════════════════════════════════════════════════════
+   WIDGET PANEL SERVICE — öffnet / schließt Widgets-Overlay,
+   koordiniert Kalender + Tankstellen
+═══════════════════════════════════════════════════════════════ */
+(function WidgetPanelSvc() {
+  function openPanel() {
+    G('widgets-fs').classList.add('open');
+    // Kalender rendern
+    if (window.CalSvc_render) CalSvc_render();
+    // Tankstellen beim ersten Öffnen laden
+    if (window.GasSvc_load) GasSvc_load();
+  }
+  function closePanel() {
+    G('widgets-fs').classList.remove('open');
+  }
+
+  function init() {
+    G('sb-widgets-btn').addEventListener('click', openPanel);
+    G('widgets-close-btn').addEventListener('click', closePanel);
+  }
+  init();
+})();
+
+
+/* ═══════════════════════════════════════════════════════════════
+   SPOTIFY SERVICE — PKCE OAuth Flow + Web Playback API Polling
+   Kein Backend erforderlich; Client ID in localStorage.
+═══════════════════════════════════════════════════════════════ */
+(function SpotifySvc() {
+  const LS_CLIENT_ID    = 'spotify_client_id';
+  const LS_ACCESS_TOKEN = 'spotify_access_token';
+  const LS_REFRESH_TOKEN= 'spotify_refresh_token';
+  const LS_EXPIRES_AT   = 'spotify_expires_at';
+  const LS_CODE_VER     = 'spotify_code_verifier';
+
+  const SCOPE   = 'user-read-playback-state user-modify-playback-state user-read-currently-playing';
+  const API     = 'https://api.spotify.com/v1';
+  const AUTH    = 'https://accounts.spotify.com';
+
+  let pollTimer   = null;
+  let tokenExpiry = 0;
+  let clientId    = '';
+
+  // ── PKCE Hilfsfunktionen ─────────────────────────────────────
+  function genRandom(len) {
+    const arr = new Uint8Array(len);
+    crypto.getRandomValues(arr);
+    return Array.from(arr, b => b.toString(16).padStart(2, '0')).join('');
+  }
+  async function sha256(plain) {
+    const enc  = new TextEncoder().encode(plain);
+    const hash = await crypto.subtle.digest('SHA-256', enc);
+    return hash;
+  }
+  function base64url(buf) {
+    return btoa(String.fromCharCode(...new Uint8Array(buf)))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  }
+
+  // ── Token-Verwaltung ─────────────────────────────────────────
+  function getToken()  { return localStorage.getItem(LS_ACCESS_TOKEN) || ''; }
+  function isExpired() { return Date.now() > (parseInt(localStorage.getItem(LS_EXPIRES_AT) || '0', 10) - 60000); }
+
+  async function refreshToken() {
+    const rt = localStorage.getItem(LS_REFRESH_TOKEN);
+    const cid = localStorage.getItem(LS_CLIENT_ID);
+    if (!rt || !cid) return false;
+    try {
+      const resp = await fetch(`${AUTH}/api/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: rt,
+          client_id: cid
+        })
+      });
+      if (!resp.ok) return false;
+      const d = await resp.json();
+      storeTokens(d);
+      return true;
+    } catch(_) { return false; }
+  }
+
+  function storeTokens(d) {
+    localStorage.setItem(LS_ACCESS_TOKEN,  d.access_token);
+    localStorage.setItem(LS_EXPIRES_AT,    String(Date.now() + d.expires_in * 1000));
+    if (d.refresh_token) localStorage.setItem(LS_REFRESH_TOKEN, d.refresh_token);
+  }
+
+  async function validToken() {
+    if (isExpired()) await refreshToken();
+    return getToken();
+  }
+
+  // ── Spotify API Hilfsfn ───────────────────────────────────────
+  async function spotifyFetch(path, method = 'GET', body = null) {
+    const token = await validToken();
+    if (!token) return null;
+    const opts = {
+      method,
+      headers: { 'Authorization': 'Bearer ' + token }
+    };
+    if (body) {
+      opts.headers['Content-Type'] = 'application/json';
+      opts.body = JSON.stringify(body);
+    }
+    try {
+      const r = await fetch(`${API}${path}`, opts);
+      if (r.status === 204) return {};      // No Content (z.B. nach Play/Pause)
+      if (!r.ok) return null;
+      return await r.json();
+    } catch(_) { return null; }
+  }
+
+  // ── UI-Update ─────────────────────────────────────────────────
+  function setSpotifyBtn(state) {
+    const btn = G('mu-spotify-btn');
+    if (!btn) return;
+    btn.classList.remove('connected', 'error');
+    if (state === 'connected') {
+      btn.textContent = '🎧 Spotify';
+      btn.classList.add('connected');
+      G('mu-spotify-disconnect') && G('mu-spotify-disconnect').classList.add('vis');
+    } else if (state === 'error') {
+      btn.textContent = '⚠ Spotify';
+      btn.classList.add('error');
+      G('mu-spotify-disconnect') && G('mu-spotify-disconnect').classList.remove('vis');
+    } else {
+      btn.textContent = '🎧 Spotify';
+      G('mu-spotify-disconnect') && G('mu-spotify-disconnect').classList.remove('vis');
+    }
+  }
+
+  function updateMusicUI(track) {
+    if (!track) return;
+    const muArt   = G('mu-art');
+    const muTitle = G('mu-title');
+    const muArtist= G('mu-artist');
+    const muProg  = G('mu-prog');
+    const muPlay  = G('mu-play');
+    const muBg    = G('mu-art-bg');
+    const sbMusic = G('sb-music');
+    const sbTitle = G('sb-music-title');
+
+    if (track.name) {
+      if (muTitle)  muTitle.textContent  = track.name;
+      if (muArtist) muArtist.textContent = (track.artists || []).map(a => a.name).join(', ');
+      if (sbTitle)  sbTitle.textContent  = track.name;
+    }
+
+    // Album-Art
+    const img = track.album?.images?.[0]?.url;
+    if (img) {
+      if (muArt)  muArt.innerHTML  = `<img src="${img}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`;
+      if (muBg)   muBg.style.backgroundImage = `url('${img}')`;
+    }
+
+    // Progress-Bar
+    if (muProg && track.duration_ms && track.progress_ms !== undefined) {
+      muProg.style.width = Math.min(100, (track.progress_ms / track.duration_ms) * 100) + '%';
+    }
+
+    // Play/Pause-Icon
+    if (muPlay) muPlay.textContent = track.is_playing ? '⏸' : '▶';
+
+    // Status-Bar
+    if (sbMusic) sbMusic.classList.remove('hidden');
+  }
+
+  // ── Playback-Polling ─────────────────────────────────────────
+  async function poll() {
+    const data = await spotifyFetch('/me/player/currently-playing');
+    if (!data || !data.item) return;
+    updateMusicUI({ ...data.item, is_playing: data.is_playing, progress_ms: data.progress_ms });
+  }
+
+  function startPolling() {
+    if (pollTimer) return;
+    poll();
+    pollTimer = setInterval(poll, 5000);
+  }
+  function stopPolling() {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+
+  // ── Play / Pause / Prev / Next ────────────────────────────────
+  async function togglePlay() {
+    const state = await spotifyFetch('/me/player');
+    if (!state) return;
+    const ep = state.is_playing ? '/me/player/pause' : '/me/player/play';
+    await spotifyFetch(ep, 'PUT');
+    setTimeout(poll, 500);
+  }
+  async function skipNext() { await spotifyFetch('/me/player/next', 'POST'); setTimeout(poll, 500); }
+  async function skipPrev() { await spotifyFetch('/me/player/previous', 'POST'); setTimeout(poll, 500); }
+
+  // ── PKCE-Auth-Flow ────────────────────────────────────────────
+  async function startAuth() {
+    const cid = (G('sp-client-id').value || '').trim();
+    if (!cid) { G('sp-client-id').focus(); return; }
+    localStorage.setItem(LS_CLIENT_ID, cid);
+    clientId = cid;
+
+    const verifier  = genRandom(64);
+    const challenge = base64url(await sha256(verifier));
+    localStorage.setItem(LS_CODE_VER, verifier);
+
+    const redirectUri = location.href.split('#')[0].split('?')[0];
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id:     cid,
+      scope:         SCOPE,
+      redirect_uri:  redirectUri,
+      code_challenge_method: 'S256',
+      code_challenge: challenge,
+      state: 'autodash'
+    });
+    location.href = `${AUTH}/authorize?${params}`;
+  }
+
+  // ── OAuth Callback verarbeiten ────────────────────────────────
+  async function handleCallback() {
+    const params = new URLSearchParams(location.search);
+    if (params.get('state') !== 'autodash') return false;
+    const code     = params.get('code');
+    const errParam = params.get('error');
+    // URL bereinigen (History API)
+    history.replaceState(null, '', location.pathname);
+    if (errParam || !code) { setSpotifyBtn('error'); return false; }
+
+    const verifier   = localStorage.getItem(LS_CODE_VER) || '';
+    const cid        = localStorage.getItem(LS_CLIENT_ID) || '';
+    const redirectUri= location.href.split('?')[0];
+
+    try {
+      const resp = await fetch(`${AUTH}/api/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type:    'authorization_code',
+          code,
+          redirect_uri:  redirectUri,
+          client_id:     cid,
+          code_verifier: verifier
+        })
+      });
+      if (!resp.ok) { setSpotifyBtn('error'); return false; }
+      storeTokens(await resp.json());
+      setSpotifyBtn('connected');
+      startPolling();
+      return true;
+    } catch(_) {
+      setSpotifyBtn('error');
+      return false;
+    }
+  }
+
+  // ── Musik-Controls: Spotify übernimmt, wenn verbunden ─────────
+  function hijackMusicControls() {
+    const play = G('mu-play');
+    const prev = G('mu-prev');
+    const next = G('mu-next');
+    if (!play) return;
+    play.addEventListener('click', async () => {
+      if (getToken()) { await togglePlay(); return; }
+      // Fallback: lokale Audiodatei (MusicSvc übernimmt selbst)
+    });
+    if (prev) prev.addEventListener('click', async () => { if (getToken()) skipPrev(); });
+    if (next) next.addEventListener('click', async () => { if (getToken()) skipNext(); });
+  }
+
+  // ── Setup-Modal ───────────────────────────────────────────────
+  function openSetup() {
+    const uri = location.href.split('?')[0].split('#')[0];
+    const el  = G('sp-redirect-uri');
+    if (el) el.textContent = uri;
+    const saved = localStorage.getItem(LS_CLIENT_ID) || '';
+    G('sp-client-id').value = saved;
+    G('mu-spotify-setup').classList.add('open');
+    G('sp-client-id').focus();
+  }
+  function closeSetup() { G('mu-spotify-setup').classList.remove('open'); }
+
+  function disconnect() {
+    localStorage.removeItem(LS_ACCESS_TOKEN);
+    localStorage.removeItem(LS_REFRESH_TOKEN);
+    localStorage.removeItem(LS_EXPIRES_AT);
+    stopPolling();
+    setSpotifyBtn('idle');
+    // Musik-UI zurücksetzen
+    const muTitle = G('mu-title'); if (muTitle) muTitle.textContent = 'Kein Titel';
+    const muArtist= G('mu-artist'); if (muArtist) muArtist.textContent = '–';
+    const muArt   = G('mu-art');   if (muArt)   muArt.innerHTML = '🎵';
+    const sbMusic = G('sb-music'); if (sbMusic) sbMusic.classList.add('hidden');
+  }
+
+  // ── Init ─────────────────────────────────────────────────────
+  async function init() {
+    clientId = localStorage.getItem(LS_CLIENT_ID) || '';
+
+    // Spotify-Button im Music-Tile
+    const spBtn = G('mu-spotify-btn');
+    if (spBtn) {
+      spBtn.addEventListener('click', () => {
+        if (getToken()) {
+          // Bereits verbunden → Setup / Info anzeigen
+          openSetup();
+        } else {
+          openSetup();
+        }
+      });
+    }
+
+    G('sp-connect-btn')  && G('sp-connect-btn').addEventListener('click', startAuth);
+    G('sp-cancel-btn')   && G('sp-cancel-btn').addEventListener('click', closeSetup);
+    G('mu-spotify-disconnect') && G('mu-spotify-disconnect').addEventListener('click', () => {
+      disconnect();
+      closeSetup();
+    });
+
+    // OAuth-Callback verarbeiten
+    const handled = await handleCallback();
+    if (!handled && getToken() && !isExpired()) {
+      setSpotifyBtn('connected');
+      startPolling();
+    }
+
+    hijackMusicControls();
+  }
+  init();
 })();
 
 
